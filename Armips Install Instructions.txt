@@ -1,0 +1,12 @@
+Armips install instructions: 
+(only works on windows OS, probably works with wine)
+1. Download armips here: https://github.com/Kingcom/armips/releases
+2. Put armips.exe, the .asm file, and the ROM you want to change in the same directory.
+3. Change the ROM's name to "RRT.gba" - alternatively, you can open the .asm file with a text editor and change "RRT.gba" to the name of your ROM.
+4. Select the .asm file and drag it on top of armips. A file called "RRT_P.gba" should be created, which is a copy of the original ROM with my hack applied.
+
+If RRT_P doesn't appear, an error occurred. Open a command window in the folder (hold shift, right-click, and select "Open command window here" in the context window), type the following, and hit enter:
+armips.exe "name of my asm file.asm"
+A list of errors should appear - fix them and try again.
+
+Make sure my code is put in an available spot in the ROM: I put a comment beside the .org command which determines the code's location so you can easily find it. Remember that all ROM addresses start with 08 or 09, and hexadecimal numbers in .asm files must end with h

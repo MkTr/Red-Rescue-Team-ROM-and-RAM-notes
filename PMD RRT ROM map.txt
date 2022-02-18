@@ -1,0 +1,480 @@
+All numbers are written in hexadecimal unless stated otherwise, with (dec) for decimal.
+All of these addresses are found in an unmodded US/Australian Red Rescue Team ROM, and will not work for other localizations.
+Don't take all of the notes at face value: there's a ton of parameter and return value data missing, even in sections where I mention a function's parameters and returns. 
+
+Keywords: 
+func: function - functions are supposed to be called routines / subroutines, but I call them functions just because routines routinely function as functions.
+line: line in a function
+data: non-ASM
+jumps / calls: refers to when the bl operation is used to branch to a function
+external stack data: Usually, when a function uses the stack, it uses data within its scope (if it starts with add sp,-14h, it'll use ldr r0,[sp,10h] at most), or if it wants to use stack allocated by another function, it'll refer to a pointer given by a parameter (before the function is called, r0 is set to point to allocated data, and the function accesses that data through r0 only). However, there are rare cases where the game breaks this rule, when a function loads stack data far beyond its scope. For example, if a function starts with "push r0-r3,r14" and "add sp,-4h", then this function has allocated 18h bytes on the stack: if it ever uses "ldr r0,[sp,18h]" or higher, it's using sp which was allocated by the function which called it. Functions like this can cause bugs or potentially crash the game if you decide to call them within your custom code without proper preparation, and may be nearly impossible to call if they're too complicated. Let me know if there's an actual proper term for this. 
+Addresses beginning with 02 are in RAM (sometimes available during all states of the game), 03 are on the stack (only available in a single specific state of the game), and 08 or 09 are in the ROM.
+
+All of the ASM code is in Thumb mode.
+
+
+
+08272B3C - 08300000 - empty space
+
+
+swi 6h - BIOS division function
+parameters: r0 = numerator, r1 = denominator
+returns: r0 = signed result, r1 = remainder, r3 = unsigned result
+
+line 080088AA - calls func 080099C0, The last place in the game which sets the user interface tiles before they're drawn (the layer that the floor, level, HP, minimap, dialogue boxes and menus are on) in every state of the game. To give a hack some basic graphical information, you can put a jump to your code here and edit the VRAM data starting at 06006000 after 080099C0 is called.
+Memory map of a UI tile (two bytes):
+0	The sprite ID the tile's using
+1	This byte is split into two parts. In the tens position is the palette of the tile (0-F), and in the ones position is a bit array:
+	1	Unknown. 1+2 makes the tile invisible?
+	2	Visible if true, invisible if false.
+	4	Flips sprite horizontally
+	8	Flips sprite vertically
+UI tile data is stored for a screen which is 20h tiles wide and 20h tiles long: a tile's address is = 06006000 +x*2 +y*40. The actual screen is 1E tiles wide and 14 tiles long, so editing tiles on coordinates like x1F y17 will do nothing.
+
+func 0800CB74 - input reader
+Reads inputs from 04000130.
+04000130 = 3FF (00000011 11111111)
+       LR dulrTEBA
+(00000011 11111111)
+L   =200
+R   =100
+down= 80
+up  = 40
+left= 20
+right=10
+sTart= 8
+sElect=4
+B   =  2
+A   =  1
+Reversed input data is kept in r3, then written to 0203B0BC at the end of the function. For example, if up is held, 04000130 will equal 3BF, while 0203B0BC will equal 40.
+
+func 08006178 - Per-Frame RNG Algorithm
+Run every frame to generate a new random number for 0203B07C
+
+func 080061B0 - Per-Frame RNG 0-to-X Function
+Picks a random number between 0 and whatever r0 equals (non-inclusive, can't pick a number equal to r0), using the random number generated every frame.
+
+func 08012D60 - Menu Creation Function (not used for Dungeon menus)
+Also used for the game's main menu when you boot the game up. 
+r0 points to a 50 byte structure in RAM which records things such as your cursor's position and the current amount of options. r1 points to the menu's options data - each menu option is 8 bytes long: the first word is an address to the option's text, the word afterward is the option's effect (determines what happens when you select it, what option your cursor goes to when you go back to the menu, and what its description is if you're in the main boot menu), which is usually just one byte. Menu data ends with an option which has 0 for its text pointer and an effect which is automatically selected if you press B, usually 1. Main boot menus end with the option effect FFDD, which makes it so pressing B does nothing, or FFDC, which takes you to the previous menu (using these in other menus softlocks the game though).
+You can find a TON of undiscovered menus by just changing the option's effect. For example, set a breakpoint for this function while in the hub, and open the menu - go to the place r1 points to, and change an option effect to 3. Upon selecting that option, a list of all your recruited pokemon will appear, and selecting one will give you a menu with "join team", "make leader", "give" "take" and "say farewell" options, without needing to go to the pokemon's friend area - it's fully functional! i don't know if this is in the base game actually i haven't played the postgame
+
+func 08014FF0 - used to draw text in all menus. r0 is the X position, r1 is the Y position, r2 is a pointer to the string to draw. USES EXTERNALLY ALLOCATED SP: just 4 bytes?
+
+
+func 08016D54 - the Kangaskhan Storage function (not statue)
+Called on every frame that the dialogue with Kangaskhan is on screen. Every phase of the dialogue has its own function, jumped to on line 08016D68 - 020039A8 is used to keep track of what phase you're in (manually changing it bugs/crashes the game).
+phase	line in 08016D54
+ 0/1	08016DE8	Store/Take/Info/Cancel main menu, and dialogue before/after the main menu
+ D/E	     DEE	Store menu (39A8 is D when you first see the menu, then becomes E after you open the store/info dialogue and close it again)
+ F	     DF4	"store/info" sub menu (opens after pressing A on an item)
+ 10	     DFA	Info menu for storing
+ 11	     E00	"Are you sure you want to put this in storage" dialogue
+ 12	     E06	"Are you sure" dialogue after selecting more than one item for storing
+ 16/17	     E0C	Take menu
+ 18	     E12	"Number?" menu - leads to the function 08017C28. In the function, on line 08017C42, r0 is equal to 1 if you press down or up, 2 if you press B, and 3 if you press A. 02003A4C is equal to the number you've chosen in the number menu, and 02003A58 is equal to the maximum possible value.
+ 19	     E18	"take/info" sub menu (opens after pressing A on an item), leads to 08017D24
+ 1A	     E1E	Info menu for taking
+ 1B	     E24	"Are you sure you want to take this" dialogue, leads to 08017928
+ 1C	     E2A	"Are you sure" dialogue after selecting more than one item for taking, calls 08017A1C
+ 4	     E30	This breaks after you advance the "thanks sweetie, come again" dialogue
+ 3	     E34	Dialogue after you press cancel in the main menu
+ B			"What do you want to store?" dialogue.
+ 15			"Would you like to take anything else?"
+ 1D			"There you go" dialogue after taking an item.
+
+func 08016E68 - used to switch between phases in the kangaskhan storage dialogue. r0 is the ID of the new phase.
+
+func 08017598 - updates the "Number?" UI when it's created or when you press up/down
+
+func 08017928 - "are you sure you want to take this" dialogue
+on line 08017962, your number of the stored item is lowered based on the number at 020039B1
+on line 0801797E, the game jumps to 08091274, which adds the items to the toolbox (08091274 is also used when you buy items from kecleon, and the statue storage code uses it)
+
+func 08017A1C - kangaskhan take multiple selected items + "are you sure" dialogue
+Begins putting the items in your inventory on line 08017A40. It's... Staggeringly inefficient. There's an array located at 02003544, with one ENTIRE INTEGER for EVERY SINGLE ITEM. When you select an item to take, the item's word is set to... 1. Just 1. Setting it to a higher number does nothing. Why the devs didn't use a 14 byte array to keep the IDs of selected items is beyond me.
+
+func 08017D24 - kangaskhan take/info sub menu
+the game checks which option your cursor is on at line 08017D36, storing it in r0. If it's on the take option and you press A, the game runs 08090A34 on line 08017D6E. At 08017D94, the game changes 020039A8 to 18 if you selected a stackable item (and also sets the max value), and at 08017DA2, it changes 39A8 to 1B if the item isn't stackable. It checks whether it's stackable or not on line 17D88, using the function 08090A60.
+On line 08017D6E, the function 08090A34 is run, which checks how many items you have in your toolbox. If you have more than 19(dec) items, you get the "oh, you don't have the room to carry more items" message.
+020039B2 stores the ID of the item you chose.
+
+func 08017E54 - the Statue Storage function. Similar to Kangaskhan's, but uses different functions for nearly everything. 
+func 08017F10 - phase switching function
+func 08018280 - new "number?" gui update function
+func 080189C8 - take/info item function. After selecting take, on line 08018A32, if the item is stackable, this function takes you to the "number?" ui, and if it's not, this function puts the item in your inventory.
+020039A0 - keeps track of current phase. C is the "number?" ui.
+02003A6C - new max number variable
+02003A60 - new current number variable
+
+func 08011BC0 - Does nothing. Pushes three registers, immediately pops them, then returns. Surrounded by similar functions. One example of this function being called is on line 080A4BA8 (in func 080A4B70), where r1 is set to 0811756C before calling the function, which is a pointer to the string "GroundMap ExecuteStation %3d %3d %3d". Could these be debug functions???
+
+
+line 0803C8B6 - the part of the personality quiz which uses the RNG-per-frame to choose a new question, but won't choose questions which have already been asked or are in the same group of questions which were asked (see 02004904)
+
+line 0803C87E - compares the number of questions asked to 8: if greater, the next question will ask if you're a boy or a girl, ending the quiz.
+
+func 0803C920 - Personality quiz answer checker function
+Runs every frame during the personality quiz. Waits for you to choose an option, then gives you personality points based on your answer.
+
+func 0803CC04 - Personality quiz question loader
+Loads a question's dialogue and answer text, but does not affect anything mechanically: changing what dialogue it loads does not change what personality points you'll get for answering the question. 
+
+
+func 0803E708 - Makes the game wait for a number of frames (animations continue), specified by r0.
+
+func 0803EAF0 - Dungeon UI type setter - sets 0202EDD0. Also makes the transparent menu disappear/reappear depending on the current UI type.
+
+func 0804178C - Called to start new animations in a dungeon. Adds effects to the effect buffer (020020DC), but only sometimes? 4178C only sometimes plays animations itself - other times, the game loops somewhere else until animations are completed. It's called at least once on every pokemon's turn, doing nothing if they have no effect. 
+
+func 08042B20 - plays the escape orb blue abduction effect. r0 = EDA of the pokemon the effect is on. Does nothing other than set parameters to call func 08042A84, such as setting r0 to the blue abduction effect ID, 1BC.
+
+func 08042A84 - This function is specifically used for animating abduction effects. To play the gold abduction effect, r0 needs to be 13E, the blue abduction effect is 1BC, and changing these numbers makes the pokemon raise into the air with a different one of the game's effects. Why is it specific to abduction effects, but has the ability to play any other effect - why not just take a 1 or 2 as a parameter? But it is specifically designed for abduction effects: on line 08042AEE, it loops back to 08042AB4 until the first half of the abduction effect plays (where the pokemon raises into the air), and then calls 0804178C on line 08042AF4 to animate the second half, regardless of what r0 is equal to. 
+Another confusing thing is the fact that one of the functions it jumps to calls 0804178C to set up the first half of the animation (0804151C called on line 08042AA4 -> 08041550 on 08041542 -> 0804178C on 080415B0), but 0804178C itself doesn't animate the animation, 08042A84 does, during the loop I mentioned earlier at 08042AB4 - all 0804178C does on the first call is put the animation in the effect buffer - and then the second time 0804178C is called on line 08042AF4, it animates the second half of the animation itself. And the effect buffer is used for both halves of the animation. Weird.
+
+
+func 08042F6C - Dungeon Function
+Manages everything about a dungeon: branches between creating a random dungeon layout or building a boss floor, plays mid-dungeon cutscenes (the scenes before fighting bosses, but not after), and begins the loop which calls the Round Function, 0804423C, until the player finds stairs or dies. This loop starts on line 080437C8, looping back from line 080437D8 after running the function 08044B28 to check if the player hasn't done anything to trigger leaving the floor/dungeon. 
+
+line 08043050 - sets 0200414F to 1 if the player has the toolbox
+
+func 0804423C - Round Function
+This executes one round of turns. On line 0804425C, it calls 080442D0 which executes the leader's turn (442D0 also waits for the player to choose an action), on 0804428A, it calls 08044574 to execute the turns of partners, and on 08044298, it calls 08044820 to execute the turns of enemies. If r0 is a nonzero byte, your leader's status effect timers don't go down.
+When your leader is at normal speed, between making a move and the next time the game waits for your decision, the round function is called four times. This is because the round function is also called to execute the turns of sped up pokemon: the first time it runs is to execute the turns of pokemon with quadruple speed, then pokemon with double speed or higher, then pokemon with triple speed or higher, before pokemon with a normal or higher speed. (This is not a typo. The order is quadruple, double, triple, then normal.)
+The game decides whether or not to execute a pokemon's turn using a turn verification algorithm at the start of every pokemon's turn, which you can find in the leader's turn function at 080442E4 ending on 08044304: the game uses the pokemon's current speed and a round counter at 02004154... But instead of simply dividing the round counter by 4 and comparing the remainder to the pokemon's speed, it multiplies the round counter by 2, the pokemon's speed by 32, and adds them to find a nonzero byte in a table starting on 080F6860. 02004154 is incremented on line 080442AC.
+line 08044272 - jumps to func 0807E378 which lowers the gusting wind counter.
+
+func 080442D0 - Leader's Turn Function
+line 080442E4 - 08044304 - leader's turn verification algorithm
+line 080443B4 - Calls func 0805D8C8, which waits for the player to make a decision and handles actions which don't use your turn (like changing direction and opening the menu).
+line 080443C8 - Calls func 08072CF4, which executes the action you chose (72CF4 isn't specific to the leader, it's used for every other pokemon too).
+line 080443F0 - This makes your leader's swap bit false, but this process has a bug: after dropping your swap bit, it then inappropriately raises your leader's wait bit. When you swap places with an ally, your ally's swap bit (8000) is raised, stored at the halfword at the beginning of the pokemon's floor data, and later, it's dropped in order to raise the pokemon's wait (4000) and walk (2000) bits, making the pokemon's status equal 6000: when the swap places animation ends, the walking bit is dropped, and the wait bit is used to skip your ally's next turn, dropping the bit afterward, effectively making swapping places use your ally's turn. Despite using different code, this entire process is the same for the leader, including raising the wait bit after the swap bit is dropped, but because nothing in the leader's code skips the leader's turn if its wait bit is raised, your leader's wait bit remains true for the rest of the floor. You can see this bug in action by going to a dungeon which lets you change leaders through the team submenu: if you did not trade places with a pokemon earlier on the floor, your leader will do nothing for one turn, but if you did, your leader will do nothing for two turns. (For whatever reason, to skip your former leader's turn after changing leaders, the game makes the byte at the pokemon's FDA+148 1, instead of using the wait bit - this byte is checked on line 08044604 in func 08044574). Due to how obscure and ineffective this bug is, it went unnoticed, and even exists in Explorers of Sky.
+line 08044440 - After getting a speed buff (from agility or quick seed), the leader gets three immediate extra turns if you're at double speed, or four immediate extra turns if you're at triple or quadruple speed. This is because, at this point, if you had a speed buff this turn, the game resets the round counter (02004154) to 0 (making the current round a round designated for pokemon with quadruple speed), and then jumps back far enough in the leader's turn function to give you another turn. After your first extra turn, the turns of all other pokemon are skipped because the current round is for quadruple speed pokemon, then at the double speed round, you get your second extra turn, and at the start of the round for pokemon at normal speed, you get your third extra turn in a row. (If you want to test this, note that doing any action other than moving to a tile cancels all of your quad/doub/trip turns, see FDA+148). I have a theory this bug exists because the developers had two different ideas for implementing the speed mechanic, and accidentally left both in for the leader, but this bug is also in Explorers of Sky, so maybe the devs intentionally wanted to make the turn order ridiculously confusing? See this post for a complete explanation of speed and turn order in pmd: https://www.pokecommunity.com/showthread.php?p=10180534#post10180534
+
+
+line 0804B0D2 - Here, the game checks if 02007508 (boss room ID) is nonzero, and if it is, it runs a ton of functions to set up the room.
+
+line 0804B544 - After randomly generating a dungeon, a loop begins after this line which sets every tile's data (see 0200750C). Before this loop, every tile's 0th byte is the only one set: after, every tile is given its proper collision and graphics data, which is a pain to set up manually. This should help a lot with editing dungeon algorithms or creating custom layouts.
+
+func 0804FF08 - Chooses a tile to put the leader on during dungeon creation, storing the coordinates at 02011D0C.
+
+
+func 080512EE - Boss room creation function. See 084A03BC.
+
+func 080523A8 - displays messages in the dungeon
+parameters:
+r0 = EDA of the pokemon the message comes from
+r1 = message address
+r2 = message visibility. 0 if invisible (doesn't show up on the screen but it's recorded in the message log), 1 if visible.
+functions 080522F4 and 0805232C use this function - 080522F4 sets r2 to 1, 0805232C sets r2 to 0
+
+func 080524F0 - called every frame to make the message box text scroll (see 0201FB5C), shows the message box when a new message appears, and hides the message box when too much time has passed (see 0201FB58).
+line 0805265C - part which handles advancing scrolling specifically, ending on line 0805267A. Making code which loops this part twice successfully makes the message box scroll twice as fast.
+
+func 08053704 - Move Mechanical Effect Execution Function. 
+This function DOES NOT animate the move's graphics effect: it only executes its mechanical effect, applying damage and such, animating things like damage and status effects - the graphical effect is animated before this function is called. It's not called if the move has no target or if the move misses? Jumps to a move's individual function on line 08053E86. If the move simply deals damage, it'll jump to line 08054508. Jumps to line 08054512 for basic attacks. Jumps back to 08053E86 multiple times if the move has multiple targets, at 0805559E.
+Something important to note is that large functions sometimes use bl operations to jump to its lines, not just b operations, because b operations have a small range limit. You can see one of these instances on line 080545C6, where the function jumps to line 080554C2 using a blop. This is very offputting at first - if you're stepping through the code with no$gba, the game will suddenly resume after one of these jumps, which usually only happens when the game calls a function which animates something or waits for user input, causing confusion around what the assumed-to-be function does and where you are in the game's code.
+
+line 08055570 - Target check routine. Even though this code is near the end of 08053704, the function actually jumps here BEFORE it gets to 08053E86, jumping back on line 0805559E. 
+
+func 08056468 - Move Graphical Effect Animator. 
+On line 0805653E, 08040DA0 is called, which loops until the animation ends.
+
+func 08056CE8 - Creates a list of targets for a move.
+r0: pointer to where the list of targets should be stored, should be at least 50h bytes considering the maximum number of pokemon on a floor.
+r1: user's EDA
+r2: address to the move being used (see FDA+118)
+
+func 0805B038 - Transform's function. 
+It's actually hard-coded to set transform's PP to 0 after use (on line 0805B04C) and fail in boss rooms (on line 0805B040). The devs had to actively TRY to make ditto this lame. On line 0805B052, it jumps to 08078E18, which does most of the work.
+
+func 0805BB74 - Baton Pass's function.
+r0: user's entity address
+r1: target's entity address. This function is run multiple times to swap the user once with every pokemon in the room, within 08053704 as it jumps back to 08053E86. Because of this, this function can be used to swap the positions of just two pokemon.
+
+func 0805D8C8 - Player Turn Idling Function
+Waits for the player to make a decision and handles actions which don't use your turn (like changing direction and opening the menu).
+line 0805DD7E to 0805DD8E - checks if L and B are held, brings up the message log if they are (on line 0805DD98, jumping to func 080532B4, which doesn't return until the player closes the message log). The two functions called after may be resetting variables.
+
+line 0805DD3E - game checks if 03007BCC is greater than 707 here (this number counts up every frame since your last input), and if it is, brings up the automatically popping up team menu.
+
+line 0805F43A - jumps to the function which waits for player input after bringing up the Team menu
+
+line 0805F544 - builds the tabs in the moves menu
+
+func 08064BE0 - the "Others" menu function. Checks which option you selected on line 08064CE0. The function for bringing up the mission objectives is 0806519C, called on line 08064D02. 
+
+line 08064C6A - The part of the Others dungeon menu function which checks what option you selected
+
+line 08066A74 - skips your partner's turn when you give it an item, via raising its wait bit
+line 08066B86 - skips your partner's turn when you take an item from it
+
+func 080687EC - Pokemon Sprite Loading Function
+Creates a pokemon's graphics data (see 0202D2B0) and puts a pointer to it in the array at 0201B638. r0 is the ID of the pokemon to load, and the graphics data pointer's position in 0201B638 is returned via r1. 
+If this function isn't called before you create a pokemon, THE GAME WILL CRASH when it attempts to draw the pokemon.
+When I was figuring out how to make code which spawned pokemon, the cause was so difficult to find due to how far away this function was from 0806B7F8, the function which actually creates a pokemon's entity and floor data, and it's so bizarre due to how little it does. This whole method of loading a pokemon's sprite pointer is more evidence that RRT is just BRT with the bare minimum changed to make it function on the GBA: it's completely designed around the limitations of the DS. This function probably used to load sprites into RAM in BRT, something the DS needs to do which the GBA doesn't (the reason why changing a pokemon's sprite in RRT is as easy as changing a single pointer in graphics data), and it's standard practice to load a level's graphics before you load the level itself, which is why this function is so far away from the pokemon spawning function. On top of that, instead of finding the pointer to a pokemon's sprite in a pointer table, it has to go through the process of loading an entire file. To make coding easier, instead of optimizing this process for the GBA, they just changed it so it works on the GBA.
+
+
+func 08069E8C - the function that checks if a Pokemon has a weather-changing ability, and if it does, executes its effect by changing its weather byte in RAM from 0 to 1. Every weather has a different byte - 02011D68 is the byte for hail.
+
+line 0806A22A - Nopping this operation makes the PoV cut to partners regardless of how far away they are from you if far-off pals is on.
+
+line 0806A308 - sets the amount of time the game waits for before the next pokemon moves in some circumstances, and before changing the PoV if far off pals is on
+
+func 0806B168 - Creates all pokemon on a dungeon's floor?
+
+func 0806B7F8 - Creates an enemy pokemon's Floor Data (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data is properly assigned, or else the game will crash.
+parameters:
+r0: pointer to creation data
+	r0+0: pokemon ID
+	r0+2: actor ID
+	r0+3: idk? 2 for both diglett and skarmory during skarmory's boss room creation - but the game doesn't change it back to 2 if you change it, so it's probably unused.
+	r0+8: level
+	r0+C: X coordinate
+	r0+E: Y coordinate
+	r0+10: idk? (just 0)
+r1: 1 in boss rooms, 0 in other dungeon floors, game rarely actually uses it for anything?
+returns:
+r0: pokemon's entity data address
+
+func 0806BC68 - Creates a pokemon's Floor Data (but not all of it, analyze the functions which call this).
+
+func 0806D528 - Damage application function. 
+Also animates the number rising above the flashing staggering pokemon.
+When a basic attack or move uses this function, it's called on line 0806D03E.
+parameters:
+r0	attacker's EDA
+r1	defender's EDA
+r2	pointer to damage
+USES EXTERNAL STACK DATA - ANALYZE THE FUNCTION & FUNCTIONS WHICH CALL THIS BEFORE USE. At first glance, based on the code before 0806D03E (str r2,[sp,8h]) and at the start of 0806D528 (ldr r0,[sp,7Ch]), it needs at least C bytes.
+Instead of using this function in your code to apply damage, you could use 0806F324, which calls 0806D528 after setting up everything.
+
+line 0806D804 - a line in one of the functions 0806F324 uses, which calls the function 0803ED30: this function waits for other animations to end.
+
+line 0806D8F8 - a line in one of the functions 0806F324 uses, which calls 080420E8 to begin the damage animation, but does not wait for it to end - only the first frame is animated.
+
+func 0806F324 - Damage application function used by traps (spikes and chestnut) and harmful weather. 
+parameters:
+r0	target
+r1	damage
+r2	determines the damage message. If E, there will be no damage animation or message, even if the pokemon dies.
+r3	something specific? 213 for chestnut traps, 206 for spikes traps. So many clones are made of this number, it's so difficult to track. on line 0806D592, it's checked if it's equal to 20E: if it is, and if the pokemon is frozen, the pokemon won't take damage? It seems to run fine if it's equal to 0.
+
+line 0806FC26 - start/part of the code which moves a new recruit's data in a dungeon
+
+func 08070774 - get pokemon's speed
+This sets a pokemon's speed status (Floor Data Address +104) based on its speed status timers (FDA+108 to 10A and 10D) and returns the pokemon's speed in r0. Parameter is r0 = pokemon's Entity Data Address.
+
+func 08071494 - A function which checks if a pokemon has run away? Called multiple times for every pokemon every turn. Changing 080714BC to mov r0,0h disables run away.
+
+line 0807158C in func 08071540 - game jumps to 08042910 if run away's conditions are true - this function loads run away's animation. Despite checking if the pokemon has run away and if the run away conditions are true, if the pokemon doesn't have run away, or if the pokemon does and its health is above half, this function isn't even called. On line 08042912, changing "mov r1,29h" changes the run away animation and sound effect.
+
+func 08071824 - Ability checker: checks if the pokemon r0 points to has the ability r1 is equal to, returns 1 if it does. (Does not check the pokemon's ROM data, it checks the pokemon's FDA+5E/5F)
+
+func 08071DA4 - Gives pokemon in your party EXP if their FDA+1FC is nonzero and 02003B01 is 1.
+
+func 08072CF4 - An action execution function, branching based on action category and wether or not the user is a leader. The function isn't called if a pokemon waits. Jumps on line 08072E4E:
+to 08072F5C when any pokemon moves to a tile
+to 0807303E if an AI pokemon is using a move (calling 0807CABC)
+to 08073094 if the leader is using an item (calling 08067110)
+to 080730AC if the leader gives an item to an ally (calling 080668D0)
+to 0807311C if the leader is throwing an item (calling 08071A70)
+to 08073154 if the leader is using a move (calling 08067884)
+to 08073162 if any pokemon uses a basic attack (calling 08067904)
+to 08073186 if an AI pokemon is using an item (calling 08073CF0)
+to 0807318E if an AI pokemon is throwing an item (calling 08073CFC)
+
+line 080742F4 - increases the empty belly message counter (0200416D)
+
+line 0807438C - sets the empty belly message counter to 0
+
+line 08074462 - damaging weather applies damage here, using 0806F324
+
+line 08074BE2 - checks if a Pokemon has Rain Dish.
+
+lines 08074FD6, 08075066, and 0807522C - these lines load the dungeon speed option. If it's slow (0), r0 is set to 1, and if it's not zero, r0 is set to 2 (in the case of 08074FD6, r0 is set on 08075232 and 08075246). If you change the numbers r0 is set to, the game speed will change - and if you use numbers higher than 2, the game will play at even faster speeds! Setting r0 to 0 makes your speed instant.
+
+func 0807520C - Walk Buffer Executor
+When you move to a tile, the action isn't executed immediately: it's put on hold, maybe placed in a queue. This function executes all walking actions at the same time, so it appears as if all pokemon are moving at the same time. This function isn't just graphical: things like status effect damage, weather damage, and trap effects are also processed here. This function is called before a pokemon is about to do something other than moving, and before your turn (before the game waits for your decision) on line 08044334 inside of 080442D0. Most of the time when it has an effect, it's called on line 08044B04 in 08044AB4, which is called on line 080442A8 in 0804423C. 
+
+line 0807528C - Sets your partner's graphical direction - a problem with it is that it only sets the direction graphically (EDA+6C) and not mechanically (FDA+46) which could be confusing in some circumstances
+line 08075682 - Something else that sets your partner's graphical direction
+
+line 080757C4 - when a non-leader steps on a trap, this line checks if it's hidden: if it is, the pokemon won't trigger the trap. A line later checks if the pokemon is a parter or an enemy.
+
+line 08075E26 - a line in the nightmare move function, after it sets the target's nightmare status
+
+func 080763F8 - Poison application function.
+
+func 080765E0 - Badly poisoned function.
+
+func 08076E20 - Atk/SpAtk Debuff Function
+r0: attacker's entity data address (this pokemon used the move)
+r1: target's EDA (this pokemon's stats are lowered)
+r2: 0 if attack, 1 if special attack
+r3: number of stages to decrease
+r12: 0203B418 - may be required?
+THIS FUNCTION ALSO USES EXTERNALLY ALLOCATED SP: add sp,-8h
+sp+0: 1, dunno why
+sp+4: 1, also dunno why
+Returns using r0
+
+func 08076F80 - Def/SpDef Debuff Function
+Parameters are the same as the atk debuff function, ALSO USES EXTERNALLY ALLOCATED SP
+r2: set to 0 for defense, set to 1 for special defense
+
+func 08077084 - Atk/SpAtk Buff Function
+parameters:
+r0: attacker's EDA
+r1: target's EDA
+r2: set to 0 if attack, set to 1 if special attack
+r3: number of stages to increase.
+r12: 0203B418
+Returns using r0
+
+func 08077160 - Def/SpDef Buff Function
+Parameters are the same as the atk buff function.
+r2: set to 0 for defense, set to 1 for special defense
+
+func 080775DC - Accuracy Debuff function
+
+line 08077954 - max speed limit
+
+lines 0807864C and 08078658 - parts of Curse's function which increase atk and def, calling the attack and defense buffing functions (08077084 & 08077160)
+
+func 08078E18 - Transform's primary function. 
+Chooses a pokemon at random from those which spawn on the current floor on line 08078E78, using 0808E9B8. On line 08078E98, the function uses func 0806AA0C to check if the pokemon to transform into is locked by version exclusivity, and rerolls if it is. 
+
+line 0807A1CE - loads the damage nightmare deals from 080F4F78, applies it shortly after
+
+func 0807E580 - checks what the weather is, r0 is the result.
+
+line 0807E95A - on every single pokemon's turn, this line checks if the pokemon has conversion (if the pokemon's FDA+C4 equals C): if it doesn't, and if its types at its FDA+5C don't match the types of its species, bursts of rainbow smoke appear around the pokemon, and its types are restored to normal. 
+
+func 0807FE9C - Trap / wonder tile mechanical execution function. 
+Jumps to a trap's specific operations and functions on line 08080032, based on the trap's ID. DOES NOT animate a trap's graphical effect though.
+
+func 0807EFFC - Dungeon Kecleon Selling Function
+When you leave Kecleon's shop, this function checks if you left anything to sell to Kecleon, and if you have, makes Kecleon ask to buy your items. It manages the dialogue boxes and entire selling process. The game determines whether or not you have items to sell by checking if 02004184 is nonzero, and if you sell your items, 02004184 is reduced by the cost of your items. Due to this, and a glitch in loading quicksave data which doubles the value (see 08082060), the infinite money exploit is possible.
+
+func 08082060 - Checks for and updates Kecleon shop dungeon tiles? Or checks all of a dungeon's tiles?
+This function is called when you load a quicksave, on line 08081C28. I don't know a lot about it - all I know is that it cycles through tiles in the dungeon and, on line 08082092, it calls func 080460F8: this checks if there's an unsold item on a kecleon shop tile, and if there is, it add's the item's cost to 02004184 on line 08046184. 
+Because this function is run without resetting 02004184, its value is increased higher than it's supposed to be. And because of how 0807EFFC works, the infinite money exploit is possible.
+
+func 08082FE0 - when resuming a quicksave, loads a bunch of data into RAM
+
+func 08083600 - returns your leader's entity data address in r0, returns 0 if your leader's fainted
+
+func 0808408C - Dungeon Seed setter. 
+Stores r0's value to 02004170. Used when starting a dungeon - r0 is taken from the per-frame RNG.
+
+func 080840A4 - Floor RNG Algorithm.
+Before a new floor is loaded, this is called to randomize the floor RNG at 0203B458, and returns it via r0.
+
+func 080840E8 - Mechanical RNG Algorithm (0203B454).
+
+func 08084E00 - Boss Death Checker. 
+Every boss has a unique ID located at their FDA+A4: Skarmory's is 3, the meanies have 5 6 and 7, rayquaza has F. When you defeat a pokemon in a boss room, this function branches based on the boss room ID located at 02007501 to the boss room's unique function. Most boss room defeat functions simply check if the boss ID of the defeated pokemon matches the ID of the boss which is supposed to be in that room, and if so, makes the byte at 02003AF6 equal 1 to let the player clear the dungeon (but if you edit the boss to have a different ID, defeating the boss won't do anything, trapping you in the boss room forever until you starve to death or give up on life). The function specific to the team meanies boss room is obviously different - it checks if all of the meanies are still alive, and if they aren't, 02003AF6 is set to 1.
+If you want to make a romhack in which you have to defeat all the enemies in a room in order to proceed, I recommend completely replacing this function (or just the part where it branches) with code that simply checks if all the enemies in the room are still alive, making sure to make exceptions for friendly pokemon like Diglett (ID 4) (after studying its parameters, returns, and if it does anything else of course).
+
+func 0808DD18 - After defeating an enemy pokemon, this function loads the pokemon's EXP yield value, then calls a function to calculate it further (increasing it based on the pokemon's level).
+
+func 0808EC94 - Sets a pokemon's default IQ skills
+
+func 0808E010 - EXP To Next Level + LvUp Stat Table Loader
+parameters:
+r0: stack pointer - the function loads the current level's EXP/Lv Table entry to this spot (C bytes)
+r1: Pokemon's ID
+r2: pokemon's level +1
+returns: 
+r2: subtract C to get r0's former value
+The tables are AT4PX compressed: this function decompresses a pokemon's table and loads it to 020384F0. The function does not decompress and load a pokemon's table if it's already loaded - the ID of the pokemon the currently loaded table belongs to is at 020384E8.
+TNL tables also include the number of stat points a pokemon gains each level. See the RAM notes for the table's layout. 
+Table of EXP table addresses: 0830055C +(ID-1)*8
+
+
+line 0808FACC - part of the stats menu drawing function which draws your IQ, with a jump to 080B0CC0
+
+func 08090A60 - checks if an item is stackable by looking at its data, but uh... it's doing way too much work. I think the only stackable items in the game are those with IDs 1 through 8. Wait a second, is it doing the same thing twice???
+
+func 0809116C - Checks if you have a certain item in your inventory as a requirement for entering a dungeon, defined by r0
+
+func 08091274 - In the hub, this is used to put items in the toolbox (kangaskhan storage, statue storage, and kecleon shops, but not when you get a job's reward?)
+It uses the functions 08090B64 and 08091290: 08090B64 creates the item's data, and 08091290 puts it in your toolbox. 
+
+func 08092A88 - This creates the data of a move (see floor data structure +118). Stores the move's data (8 bytes) to what r0 points to, r1 is the move's ID. Sometimes it's called when a move is used???? Maybe it's called when a move hits, and not when it misses/fails? But why???????????
+
+line 080949A8 - sets the game's default settings. Lots of redundant operations (the eight ldr r0,[r2] ops other than the first) allow for some extra space to fiddle with.
+
+
+func 0809EACC - Script Command (Cutscene) Engine. 
+Jumps to different functions based on the current script command on line 0809EB16. Special exception for command F5 on line 0809EB0A?
+line 0809FC2E - personality test
+
+func 080A4B70 - Script Loader
+Finds the current script to start playing. r0 is a pointer to C bytes to load data to, and r1, r2, and r3 are script and subscript IDs. A table at 0811E258 keeps a pointer to the end of every script (organized by script ID): at a script's end is a pointer table to its subscripts, but the process of loading these is complicated - the process starts on line 080A4BAC. 
+If the code around 080A4B9E is for debugging purposes, this function's name could be GroundMap ExecuteStation?
+
+
+
+
+data 080E5AF0 - main boot menu options. See 08012D60 for an explaination on the menu options structure.
+data 080E5B8C - awaiting rescue menu options.
+data 080E5C18 - menu after being rescued.
+
+data 080F4F32 - turns until Burn damages you next. 
+
+data 081077A8 - Maximum sizes of dungeons, sorted by dungeon ID. Changing a dungeon's number here is one of three things needed to expand a dungeon's size: see 084A9E74 and 08108084.
+
+data 08108084 - Dungeon Floor Bytes.
+This is... So goddamn bizarre. This is a pointer table to floor dungeon data, sorted by dungeon ID. Each floor is one nonzero byte - for example, 00 01 01 01 00 01 01 01 01 01 00 at 0810795C are the floors of tiny woods and thunderwave cave. They change to 02s at Mt.Thunder, 03s in the middle of Mt.Thunder's Peak, and keep going up to 0E. If you change a dungeon's size without adding floor entries here, the game will crash when the dungeon starts and ends, but the dungeon itself doesn't bug up? Why isn't this just kept with the other dungeon floor data, so it's all in one place? Adding floor entries here is one of the three things needed to expand a dungeon's size: see 084A9E74 and 081077A8.
+
+data 08109D30 - Dungeon data table
+sorted by dungeon ID, each dungeon's entry is 10 bytes. Byte B is a bit array which determines what HMs you need to enter the dungeon: 1 is for fly, 2 is for dive, 4 is for waterfall. Setting it to 0 disables HM requirement.
+5: maximum team members
+7: if 1, sets your team's level to 1 when you enter
+
+data 0810AD0C - version exclusive pokemon IDs, see 0203989A. Figure out how this list works and erase it.
+
+data 081158A8 - LMAOOOOOOOOOOOOO THESE ARE THE IQ STARS
+Instead of simply copying and pasting a star for every IQ stage, there's an individual string of stars for each IQ stage. And the pointer table for it at 08115718 IS EVEN WORSE: LOOK AT HOW MANY DUPLICATES THERE ARE OML
+
+0826FCD4 - 0826FDE1 appears to be data and pointers used to verify if a save file is legitimate, and if you edit it, old save files won't work. Editing it also makes it impossible to make new save files - the game says "Save failed" whenever you try to save your game. func 080B0BE0 is used in saving the game - on line 080B0BF0, it compares something, and if it's false, the save will fail. However, this function isn't even called in a game where the save file verification data is changed...?
+
+data
+08357BFE - bulbasaur's lv1 hp
+0835846E - Nidoqueen's lv1 hp
+083584B4 - Nidoran boy's LV 1 stats
+083584B6 - Nidoran B's lv1 hp
+083584FE - Nidorino's lv1 hp
+pokemon species data structure is 48 bytes long
+
+data
+083679C4 - pointer to the name of Iron Tail (ID 01)
+083679D0 - the PP of Iron Tail
+083679E8 - pointer to the name of Ice Ball (ID 02)
+083679F4 - the PP of Ice Ball
+To find the name of a move from its ID: Start with a register equal to 083679A0. Multiply the move ID by 24 and add that value to the register. Load the word from that register, then load the string that the word points to.
+Finding a move's ID based on its name is just as easy: search for the address of the move's name (making sure there's an 08 at the start before you reverse its bytes) to get the pointer, get the address of that pointer, subtract 083679A0, divide the result by 24, drop the decimals, then add 1.
+For whatever reason, all the move names aren't stored in the same place, some are stored in ridiculously weird places. For instance, Bite is stored in the list of Pokemon names, between Mightyena and Poochyena. 
+To find the move's PP, add C to the register after multiplying the move ID and adding it, and load the byte.
+
+data 084A03BC - Boss Room Layouts Pointer Table
+084A03BC + (boss room ID * 4) is the pointer to a boss room's tile data - 0849E933 is Skarmory's room. The first two bytes of a room define its dimensions, and each byte afterwards are the tiles, compressed in a similar way a PNG is. The tens place of a byte determines what the tile is, and the ones place determines how many copies of the tile to make in a row - so the number 26 makes 6 tiles with an ID of 2. This is not the case for bytes equal to 0E: these bytes tell the game to read the next byte and make one tile of that type, as its type obviously can't fit in a single digit. So 0E 3C makes one tile of type 3C. 
+The IDs of tiles also determine where Pokemon spawn in the boss room, as well as certain properties - for example, tile ID 4 is just a normal tile, but all enemies look at that tile when the fight starts. Looking around the tiles the player spawns on in Skarmory's room... What the hell? Did the developers originally plan to let players have a party of SIX???
+Skarmory's room data visualization (numbers in red are the room's dimensions, numbers in green visualize four of the tiles on the map, and the extra grey squares put along the side and top of the map were placed there to help me make it): https://cdn.discordapp.com/attachments/400728230501285889/864010718381604894/unknown.png
+Changing the player's spawn tiles to Skarmory spawn tiles (resuts in the player spawning out of bounds): https://cdn.discordapp.com/attachments/400728230501285889/863988066141470760/unknown.png
+Changing a bunch of normal tiles to Skarmory spawn tiles (All of these copies of Skarmory are completely interactable, but the room ends after you defeat one of them due to how func 08084E00 works): https://cdn.discordapp.com/attachments/400728230501285889/864016502465101824/unknown.png
+
+data 084A9E74 is a table of floor dungeon data addresses, sorted by dungeon ID. The game finds this table on line 0803D508, using the game's file directory system. Every floor in floor dungeon data is 10 bytes, and a dungeon's first floor entry is always blank (all zeroes). Adding floor entries is one of three things needed to expand a dungeon's size: see 081077A8 and 08108084.
+	floor entry +0: floor ID. Every floor in the game has a different ID: the floors in tiny woods are 0, 1, and 2, and the floors in thunderwave cave are 3, 4, 5, 6, and 7, and the next dungeon continues at 8, 9, A, B, etc. Note that special floors (floors where a cutscene plays, floors where you fight a boss) are not included in this count (so tiny woods floor 4 does not appear anywhere in the list). Changing this changes the floor's tileset, music, and floor generation. The ID is used to get other floor properties from a list starting at 084A9F74 - each entry is 1C bytes long, and the code which extracts this data starts at 0803D558.
+	+2: Pokemon spawn table ID. Spawn table addresses begin at 084C2A9C.
+	+4: trap table ID. Number is used to get an address from a table starting at 084C4ED8, each entry is 28h bytes long. The first six entries only have the number 2710 at offset 22, and the rest are much more complicated. The code which processes this data starts at 0803D594.
+	+6: item table ID. The number is used to get an address from a table starting at 084CB56C, and take halfwords starting at that address, but numbers less than 752F are treated differently. The code which processes this is at 0803D62E.
+	+8: unknown, always equal to 1
+	+A: unknown, always equal to 2
+	+C: unknown, always equal to 3
+	+E: unknown, always 0.
+
+data 08510010 - Spritesheet Filename Table
+Use 08510010 +(ID*8) to get a pokemon's pointers. The first pointer is the file's name, and the second is the file itself. A pokemon's graphics data (0202D2B0) has a pointer to one of these entries. The existence of pksdir0 headers before the files is more evidence that RRT is just BRT with the bare minimum changed.

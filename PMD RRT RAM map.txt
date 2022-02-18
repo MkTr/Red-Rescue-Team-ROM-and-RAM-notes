@@ -1,0 +1,409 @@
+All numbers are written in hexadecimal unless stated otherwise, with (dec) for decimal. Some numbers might have the suffix "h", which only means the number is hexadecimal.
+All of these addresses are found in an unmodded US/Australian Red Rescue Team ROM, and will not work for other localizations.
+Addresses may not work for mods which change how much heap data is allocated: use no$gba's debugger to find out how the game accesses a point of interest, and use that method in your asm hacks to make them universally compatible. Though no mods which change RRT's heap exist at the time of writing this.
+This datacrystal doc also has some other stuff, I might move this stuff there sometime:
+https://datacrystal.romhacking.net/wiki/Pok%C3%A9mon_Mystery_Dungeon:_Red_Rescue_Team:RAM_map
+
+Keywords: 
+byte (b) = two hexadecimal digits, 8 bits (character variable type).
+halfword (h) = two bytes (short integer)
+word (w) = four bytes (integer)
+pointer: a variable which is equal to an address.
+bit array: when multiple properties are stored in every bit of a byte. For example, when a bit array byte is equal to 03 (0000 0011), it will have the combined effects of 02 (0000 0010) and 01 (0000 0001). I list a bit array's properties from right to left, so bit 1 would be 0001 (1), bit 2 would be 0010 (2), bit 3 would be 0100 (4), and bit 4 would be 1000 (8).
+
+Addresses beginning with 02 are in RAM (sometimes available during all states of the game), 03 are on the stack (only available in a single specific state of the game), and 08 or 09 are in the ROM.
+
+Also remember that computers store numbers in reverse (called little-endian format), flipping numbers by every byte: 12345678 when stored in RAM would look like 78563412. Some memory viewers have an option to view data as 16-bit or 32-bit numbers, which re-reverses numbers by every two or four bytes respectively.
+
+
+
+
+02000AF8 - this and bytes around this area determine story progress. Changing it to 11 and the next byte to 0, and starting a cutscene or clearing/failing a dungeon makes the ending cutscenes play. The byte is essentially the game's current chapter, and the byte afterward is the cutscene number to play next in that chapter.
+
+020C0AB4 - change this byte to 0 to access the game's debug room when you continue a saved game
+
+02038C10 - team name
+
+02038C08 - money
+
+02038C0C - money in the bank
+
+02038C70 - dungeon settings
+0203B46C - pointer to dungeon settings
+
+02038C84 - counts every frame since the game was turned on
+0203B0B8 - counts every frame since the game was turned on
+
+0203989A - each byte keeps track of which version exclusive pokemon have been unlocked - 0 if locked, 1 if unlocked. Version exclusive pokemon are prevented from appearing in dungeons unless they've been unlocked, which happens in certain conditions like seeing them in a cutscene. Version exclusive pokemon IDs are found at 0810AD0C
+
+0203B07C - Random number generated every frame. Used to choose personality quiz questions and create a dungeon's seed, I'd assume it's also used to generate bulletin/mail jobs and items at the town's kecleon shops. Randomized by the function 08006178.
+
+0203B454 - Random number generated after every turn in a dungeon and after every time it's used. Used for effect chances (whether or not something poisons/hits/etc), AI decisions, item and pokemon spawning. Randomized by the function 080840E8.
+
+0203B458 - Random number generated before every dungeon floor. Used for dungeon layout creation. Because its value isn't saved when you quicksave, its value is set to 1 when you restart the game, making quicksave manipulation possible. Randomized by the function 080840A4.
+
+
+02004894 and 02004896 - the species ID of your leader and your partner when you're finishing the personality test: if you change these, the species of your pokemon will change, and the game will give them their proper stats and moves. However, unless you're playing a modded version of the game where the starter-specific animations and portraits are removed in cutscenes, the game will crash. This mod does that: https://www.youtube.com/watch?v=ICPJu4S0E2Y
+
+020047D6 - IDs of partners available on the list
+
+020048C8 - current personality quiz question's ID
+
+02004904 - during the personality quiz, this is the start of a table which initally has every byte equal to 0. When a question is picked, a byte here is changed from 0 to 1 to ensure it won't get picked again. Also, the game changes all the questions in its group from 0 to 1 - every four questions are separated into question groups, so if question 4, 5, 6, or 7 is picked, then questions 4, 5, 6, and 7 won't be able to be picked later in the quiz.
+
+020048C4 - equal to the number of questions which have been asked.
+
+
+020389A8 - Toolbox Items
+An item is four bytes long: the first byte is a bit array which determines various properties of the item, the second byte determines its quantity, the third byte determines its type, and the fourth byte is used for shop items - I don't know how it works, but if the item was taken from Kangaskhan storage, it's equal to 2. If the item is a used TM (third byte 7C), the second byte determines what item it was before it was used.
+Toolbox item's first byte bit array:
+bit 1: needs to be true - if false, the item disappears if it's at the end of the list, or if it's in the middle of the list, the toolbox the item's in becomes inaccessible.
+bit 2: if true, the item is a shop item (has a price beside it).
+bit 3: becomes true while you're looking at its info box. If the info box is open and you set the item's bit 4 to false, and set the bit 4 of another item to true, when you exit the info box, the cursor will be on the other item - obviously, the game uses this to keep track of what item to return to. Strangely, this does not become true during the "Give Item" menu, even though the menu remembers what item your cursor is on when you go back from the give item menu.
+bit 4: makes the item sticky, putting a red X before its name.
+bit 5: selects the item for throwing. Interestingly, if you change this to true for an item that isn't a throw item, pressing L+R will still throw the item in a line. If you have multiple items selected to be thrown, the game will throw the firstmost item.
+bit 6: unknown
+bit 7: unknown
+bit 8: unknown
+
+020389F8 - Kangaskhan Storage item quantities, in order of item ID.
+
+
+02039778 - a bit array which determines what adventure log achievements are visible on the first page.
+02039779 - second adventure log page
+0203977A - third adventure log page
+0203977B - fourth adventure log page
+02039784 - number of pokemon evolved
+0203978E - number of pokemon which joined the team
+02039790 - number of moves learned
+02039838 - number of floors explored
+
+02039738 - 0203976C - these bytes keep track of the PKMN news articles you stored. A byte is 0 if the article isn't stored and 1 if it is.
+
+
+02039448 - jobs in your mailbox
+02039498 - jobs on the bulletin board
+02039538 - The jobs you currently hold. Each job is 14 bytes:
+0	status bit array. Equal to 0 if nonexistent, 5 (0101) if suspended, and 6 (0110) if active.
+1	job type, values are 0-4
+4	dungeon ID
+5	floor (job type, dungeon ID, and floor all contribute to difficulty grade calculation)
+8	message
+9-B	sometimes determines second reward???
+C	client 1
+E	client 2
+10	item the client desires in fetch quests
+11	amount and types of rewards, values are 0-9
+12	first reward
+13	second reward sometimes?
+
+
+0202F400 to 020381F7 - Pokemon Storage Data structures
+This is where the data of your pokemon are stored outside of a dungeon. When you start a dungeon, storage data is transferred to dungeon data, then dungeon data is transferred to floor data: when you go from one floor to another, floor data is written to dungeon data, and when you exit a dungeon, dungeon data is written to storage data.
+Pokemon are stored based on what friend area they appear in, and friend areas load pokemon based on where they appear in this list. For example, the pokemon between 0202F400 and 0202F717 are in bountiful sea, and the next 10(dec) entries are in Treasure Sea. 
+This means that changing a Pokemon's species here doesn't change the friend area you'll find it at, even though selecting the visit option when looking at your friends list takes you to the friend area the pokemon is supposed to be at. For example, if you turned a Tentacool you recruited into a Mew, finding it in the friends list and selecting visit will take you to Final Island, where the Tenta-Mew will not appear, but it can be found if you go to Bountiful Sea.
+Note that dungeon data structures start IMMEDIATELY after storage data structures: don't get them mixed up. And because storage data can only hold one of every pokemon in the game, you CANNOT increase the sizes of friend areas with PMDe, or else bugs will occur.
+memory map (58 bytes):
+0		bit array: bit 1 determines whether or not the pokemon exists. Bit 2 determines whether or not the pokemon is on your team. Whenever you enter a dungeon or open your team menu, the game looks through storage data and constructs your team based on whichever on-team pokemon it finds first. This means the partners on your team, other than your pre-postgame first partner, will always be in order of where they appear in storage data: it doesn't matter what order you put them in your party first, a pokemon from Bountiful Sea will always appear before a pokemon from Treasure Sea in your team order. Before the postgame, changing your partner's byte from 3 to 1 then checking your team menu IMMEDIATELY PUTS YOU IN THE POSTGAME?????
+2		1 if the pokemon is your leader
+3		level
+4		story importance - 1 for the average pokemon. if 40, this is the protagonist. if 41, this pokemon is your pre-postgame first partner. the magnemite you get after beating skarmory is 46?
+8-9		species ID - note that a pokemon's species ID isn't its national pokedex number for pokemon after Unown, since every single unown takes one ID. Add 19 (25 dec) to a pokemon's national pokedex number if it's greater than C9 (201 dec) to get its species ID.
+14-15		IQ
+16-17		max HP
+18-1B		attack/sp.atk/defense/sp.def
+1C-1F		exp
+2C-33		first move
+4C		beginning of the Pokemon's name
+
+02038388 - Apparently Unused Team Storage Data Entries. Located right after Dungeon Data entries, these are copies of the storage data entries of the pokemon on your team, and are organized in the order that they appear on your team, but ARE NOT used to keep track of the pokemon on your team (see the first byte in a storage data structure). They're set when you tell a pokemon to join your team in a friend area, when you change leaders in a friend area, and when you enter a dungeon, but changing their data has no apparent influence. I've got no idea why these exist, could be left in the game by mistake as the devs swapped from one team recording method to another.
+
+
+====IN-DUNGEON ONLY==============================================================================================
+
+02004138 - Current dungeon ID (changing this changes the dungeon when you go to the next floor)
+02004139 - Current floor
+020209BC - Dungeon's floors +1 (dungeon ends when floor number is equal to this) (changed back to normal whenever you enter a stairway which isn't the final stairway)
+02007508 - Boss Room ID. 0 for non-boss floors.
+02007501 - also the boss room ID??? it's a completely different number sometimes, but it's used to identify the room in some situations. While 7508's values make sense (1 for skarmory, 2 for meanies, 8 for rayquaza), 7501's values are all over the place (1 for skarmory, 5 for meanies, 17 for rayquaza).
+
+02007509 - monster floor bool - 1 if the game is about to generate a massive room filled with enemies.
+
+02003AF8 - Win bool: becomes 1 after you go down stairs. Set this to 1 to advance to the next floor after moving. you can also set it to 1 during the fade to black screen to immediately advance to the next floor after the graphics fade in again.
+02003AF6 - Win bool used for boss rooms, but setting it manually works outside of boss rooms too (and 02003AF8 also works in boss rooms)
+
+0200414F - if 1, you have the toolbox - set on line 08043050
+
+02004154 - counts rounds, including rounds designated for sped up pokemon. See 0804423C in ROM notes for an explanation.
+
+0200416D - counts how many turns you've had an empty belly for, to display the "oh no, you're starving to death, eat your partner before it's too late" messages (see 080742F4)
+
+02004170 - Dungeon seed. This is the first value run through the dungeon floor RNG to create the first dungeon floor random number. When you're rescuing another player, this is set to whatever dungeon seed they had in the dungeon they lost on - because of this, you're playing through the exact same dungeon layouts that they went through. Funny thing is, while the dungeon floor random number isn't saved, the dungeon seed IS saved: it's possible to fix quicksave manipulation by running this number through the dungeon floor RNG algorithm an amount of times equal to the current floor whenever you load a quicksave.
+
+0201FB67 - start of the dungeon log
+
+02003B01 - if 1, your pokemon will gain EXP equal to the amount stored at their floor data address +1FC
+
+
+020381F8 - beginning of Pokemon Dungeon Data entries. Dungeon Data keeps track of the data of your pokemon during a dungeon, but not while you're exploring a floor.
+Dungeon Data entries are not in the same order your team is in, due to how the game constructs a team (see the first byte of the storage data entry map). It's completely possible for your leader's DDE to appear after your partner's.
+Note that dungeon data structures start IMMEDIATELY after storage data structures: don't get them mixed up. They're extremely similar, but DDEs have some more information.
+Team Data memory map (64 bytes):
+0		a bit array I haven't mapped yet, usually equal to 3 (bit 1 means this pokemon exists, bit 2 means it's on your team)
+2		1 if leader
+3		level
+4		importance byte - equals 3A for pokemon you just recruited, but changing it to 1 doesn't change its heart to yellow (see A). Equal to 4A for pokemon you need to escort.
+8-9		Pokemon's IQ
+A-B		Pokemon's Storage Data entry number. This number times 58 plus 0202F400 will give you the pokemon's storage data entry address. This is equal to -1 (or FFFF) for pokemon which you just recruited in the dungeon and escorts: changing it to a positive number changes its heart in the team menu from pink to yellow, and likely changes which storage data entry is overwritten with this pokemon's dungeon data entry when you leave the dungeon.
+E-F		the Pokemon's species
+10-13		the Pokemon's HP and maximum HP.
+14-17		the Pokemon's stats, in order of attack, special attack, defense, and special defense.
+58-62		the Pokemon's name
+
+02004190 - first Pokemon Floor Data structure - 208 bytes long. Pokemon Floor Data is used to record and process a pokemon's status during a dungeon's floor.
+The first floor data structure belongs to your leader, the three which follow are reserved for your team members (if you have less than three partners, then unused slots are blank) and the rest are for enemies and other NPCs. 
+Note that some of these variables only impact your Pokemon for the floor, and will be reverted when the next floor loads: a Pokemon's permanent attributes are stored in Dungeon Data and Storage Data. You've got to experament which ones do and don't though - changing statistics (lv, exp, attack/defense, iq) and moves make a permanent change, but changing a Pokemon's species or ability does not.
+statistic data structure map:
+0-1	h	bit arrays which are used to store various properties of Pokemon. Changes to 2000 while you're moving, for example.
+2-3	h	The Pokemon's species mechanically. After changing this, your pokemon will give off a puff of smoke on its next turn, but its appearance won't change. In the summary menu, its species, friend area, type, and "EXP to next level" will change to match the Pokemon of whatever you set it to, and the moves it learns upon leveling up change too.
+4-5	h	The Pokemon's species graphically. Changing this will change your Pokemon's palette and shadow size, but not its sprite. It also affects what it says when you talk to it, and its name if it's an enemy.
+6	b	enemy boolean: 0 for pokemon on the player's team, 1 for all other pokemon. For example, if you change the leader's team boolean to 1, your partners will start to attack you. This is also equal to 1 for pokemon which need to be rescued and kecleon: rescue pokemon are defined by the A4 byte, and kecleon are defined by byte 8.
+7	b	the leader boolean: this number is only 1 for the leader and 0 for every other pokemon. Changing a non-leader's leader boolean to 1 makes the pokemon immobile. Changing the leader's leader boolean to 0 makes it so, after you take a turn, your leader will have a second turn, under AI control. If you set a partner's leader boolean to 1 and the leader's to 0, then defeat an enemy, the game will give you full control over your partner and put your leader under AI control for the rest of the floor - however, bugs will occur. A common bug is the missing leader hardlock, where if your former leader is defeated, you will immediately lose the game whenever a new floor loads, and opening your team menu crashes the game, bricking the save file.
+8	b	the kecleon boolean: 0 by default. If this is equal to 1 for the leader, enemies will ignore you. If this is equal to 1 for a partner, the partner will become immobile, and if you talk to it, it'll speak as if it's a kecleon.
+9	b	pokemon's level
+A	b	the Dungeon Data your pokemon is using (see below). 0 for the first entry, 1 for the second entry, etc. Equal to 0 for non-team pokemon. Changing this to another pokemon's number immediately changes your pokemon's name to the other's, and if the pokemon is further down the team order list than the other, the pokemon's stats will be written to the other's dungeon data entry, but not vice versa (for example, if you have a squirtle and a pikachu, and you change pikachu to use squirtle's dungeon data, squirtle will have pikachu's stats after you go to the next floor, but this won't happen if you change squirtle to have pikachu's dungeon data).
+B	b	unknown
+C-D	h	pokemon's IQ: 1 star appears in the summary menu when this is equal to 0-9, 2 stars appear at A (decimal 10), 3 appear at 32 (dec 50), 4 appear at 64 (dec 100), 5 appear at 96 (dec 150), and another star is added every 50 points. IQ is replaced with "MAX" at 3DE (dec 990). When a pokemon eats a gummi, its IQ increases by A-9 if the message is "a big favourite", 8-5 is a favourite, 4-3 doesn't seem to dislike, 2-1 is a little satisfied. 
+E-F	h	current HP
+10-11	h	max HP
+12-13		unknown
+14-17	w	Pokemon's attack, special attack, defense, and special defense, in that order.
+18-1B	w	total EXP
+1C-27		a Pokemon's stat modifications. They're equal to 000A when neutral, decrease by 1 when a stat falls slightly, and decrease by 2 when a stat falls sharply. In order, the stats are Attack, Special Attack, Defense, Special Defense, Accuracy, and Evasion. Why are they halfwords though?
+40	b	Pokemon's story importance (see the fourth byte in storage data structures). Equal to 41 if the pokemon is your pre-postgame first partner (if it's defeated, you'll get the "your partner fainted!" message and you'll game over). Equal to 3A for a pokemon which you just recruited, but changing this to 1 doesn't change its heart to yellow (see Dungeon Data +A). Equal to 4A for pokemon you need to escort.
+44	b?	Pokemon's current action: equal to 0 on the leader's turn, before making an action; 1 is skipping a turn; 2 is moving; 14 is using a move; 32 is a basic attack; for the leader, it'll go back to 0 as soon as every other Pokemon has moved; for Pokemon other than the leader, the value is stored until it's overwritten by their next move.
+46	b?	the direction the Pokemon is facing mechanically (e.g.: if your pokemon's graphical direction (located at EDA+6C) is left and your mechanical direction is right, it'll look like you're facing left, but you're actually facing right, and if you attack, the graphical direction will be updated to face right as you attack). 0 is looking down, 1 is looking down and right, 2 is looking right, 3 is looking right and up, et cetera. 
+5C	b	pokemon's first type
+5D	b	pokemon's second type
+5E	b	pokemon's first ability
+5F	b	pokemon's second ability
+60-63	w	currently held item, has the same structure as toolbox items
+8C-8E	3b	Active IQ skills, in bit arrays. Is 8F unused?
+90-92	3b	Clone of active IQ skills - primarily used to check if a skill is active, but it's only written to after you exit the Check IQ menu. For some reason, some IQ skills use different bytes???
+94	b	if this equals A, the pokemon's AI acts as if it has run away... But run away doesn't change this byte to A?
+A4	b	Goal Importance byte - this is hard to explain. For every other pokemon, this is 0. This is 1 for pokemon who need rescuing (changing it to 1 makes the pokemon wander around randomly, your allies won't attack it, it gets a yellow shadow, and talking to it brings up the "Yes! X was found!" dialogue). In boss rooms, every pokemon in a boss room - across all boss rooms in the game - has an individual boss room ID. Skarmory's is 3, Diglett's is 4, the meanies have 5 6 and 7, rayquaza has F. When you defeat a pokemon in a boss room, the game has functions unique to every boss room (see 08084E00): basically, if it matches up to the ID of the boss in that room (if you defeat a pokemon with an importance byte of 3 in Skarmory's room), the floor is cleared. But if you zero this byte for a boss before defeating it, you'll remain in the boss room after it's defeated. If it's 2, the enemy does nothing but constantly use a basic attack in the direction it's facing??????????
+A8	b	status condition for sleep. Equal to 0 if normal, 1 if asleep, 2 if sleepless, 3 if having a nightmare, 4 if drowsy, and 5 is if you're resting (heals you when you wake up).
+A9		turns until sleep status condition wears off
+AA-AB		unused?
+AC		status condition for hurting conditions. Equal to 0 if normal, 1 if burned, 2 if poisoned, 3 if badly poisoned, and for some reason, 4 if paralyzed.
+AD		turns until hurting status condition ends - if it's equal to 7F, it never decreases (this is true for all the other counters).
+AE		turns until hurting status condition inflicts damage
+B0		status condition for stunning conditions, such as cringing and frozen.
+BC		records certain conditions:
+		1 - cringe
+		2 - confused
+		3 - paused
+		4 - cowering
+		5 - taunted
+		6 - encore
+		7 - attract
+		8 - when you change this byte to 8 manually, it'll say you're sped up, but this byte is never used by the game to record if you're sped up - see FDA+104-10D
+BD		timer until BC's condition ends
+C4		records certain conditions:
+		1 - reflect
+		2 - safeguard
+		3 - light screen
+		4 - counter
+		5 - magic coat
+		6 - wish
+		7 - protect
+		8 - mirror coat
+		9 - endure
+		A - mini counter
+		B - Mirror Move
+		C - conversion
+		D - Vital throw
+		E - Mist
+		F - When you change this byte to F manually, it'll say you're weakened, but this byte is never used by the game to record if your stats are down - that's what FDA+1C-27 is for - so it's just an out of bounds glitch.
+C5		timer until C4's condition ends.
+E4		if 1, pokemon is invisible. 2, pokemon is transformed. 3, pokemon can travel anywhere. 4, a dash appears in the status menu, and selecting its info crashes the game.
+104-107	w	speed condition (1 if normal, 0 if slowed, 2 if double speed, etc)
+108		turns until double speed returns to normal
+109		turns until triple speed returns to normal
+10A		turns until quadruple speed returns to normal
+10D		turns until slowed speed returns to normal
+112		stockpile count
+118-11F	(8b)	pokemon's first move (see move map below)
+120-137		pokemon's second, third, and fourth moves
+13C		hunger level
+148		When a sped up pokemon does an action other than moving to a tile, all the pokemon's other extra turns are cancelled, using this byte: as long as this is 1, this pokemon's turns are skipped. Also, after changing your leader through the team submenu, this becomes 1 for your former leader to skip its next turn. This byte is zeroed for all pokemon at the start of a normal speed round.
+1FC		amount of EXP the pokemon is about to get.
+
+Memory map of a move (8 bytes):
+0	Move Status (bit array):
+		bit 1 (1) = Visible
+		bit 2 (2) = When true, this move is linked with move before this one (when two moves are linked, the first move's data isn't changed)
+		bit 3 (4) = AI set to use move
+		bit 4 (8) = Move set for leader
+		bit 5 (10) = Unknown - upon using the move, this is set to true?
+		bit 6 (20) = Move unusable
+		bit 7 (40) = Unknown
+		bit 8 (80) = Unknown
+1	Unknown, though I know it's another bit array - I just haven't looked into it. bit 1 makes it unusable. When you change bits in the first bit array, the game changes bits in this bit array sometimes?
+2-3	Move ID
+4	Current PP
+5	Move Plus Points
+6-7	Unknown
+
+
+02017310 - beginning of Entity Data entries for pokemon. Entity Data Addresses are what the game uses to identify entities on a floor in a dungeon, and are used for pokemon, items, and traps (wonder tiles are counted as traps). For example, the data of floor tiles keep the EDA of the Pokemon currently occupying them and the EDA of the trap or item on them. Like Pokemon Floor Data, the entity data structures of your partners are found after your leader's in order of how they appear on your team, and are followed by the entity data structures of other Pokemon on the floor - there are enough slots for a total of 32(dec) pokemon. The entity data of traps and items may be somewhere nearby.
+For reference:
+02017310 - first Pokemon
+02017384 - second Pokemon
+020173F8 - third Pokemon
+0201746C - fourth Pokemon
+entity data memory map (74 bytes):
+0-3		This value is always 1, and it changes to 0 during the floor transition - changing it to 0 manually makes the pokemon cease to exist, and changing it to higher values yields weird results: it makes the main Pokemon look in one direction and teleport after every step, and changes its name to some random item or phrase in the game (but changes it to "someone" at values higher than 3). This is because this value also determines what type of entity this is: 2 is for items, and 3 is for traps or wonder tiles.
+4-7		Pokemon's X and Y coordinates in the dungeon - changing them gives an immediate effect, though it won't be visible until you move.
+8-B		X and Y coordinates of the last tile the Pokemon stepped on
+C-F		Pokemon's X position on the screen.
+10-13		Pokemon's Y position on the screen.
+14-1B		A copy of the Pokemon's X and Y positions on the screen.
+20		Changing this to 0 makes the pokemon invisible, but does not make it nonexistent.
+21-63		Various variables the game uses for the Pokemon's animation.
+64-67		A pointer to the pokemon's Graphics Data. See 0202D2B0 for an explanation.
+68-69		Affects your Pokemon's sprite and palette.
+6A		Changing 6A makes your Pokemon perform an animation: it's usually 7 (the idle animation).
+6B		Copy of 6A
+6C		6C is the direction your Pokemon is facing: 0 is looking down, 1 is looking down and right, 2 is looking right, 3 is looking right and up, et cetera. Like 6A, it also makes the pokemon do an animation if you set it to a number higher than 7, in a direction based on the first three bits of the byte. In order to make a pokemon bounce, I set 6A to 7 and added 18 to 6C.
+6D		Copy of 6C
+70-73		Points to the Pokemon's Floor Data. 
+
+02017070 leads to a list of all the possible Pokemon entity data addresses on the floor, starting with your team members in order of how they are in your party. Rearranging them changes the order of Pokemon in your party (swapping allies with enemies lets you put enemies in your party), and setting an address to 0 removes the Pokemon at that address from the game. In dungeons where you can change the leader through the menu, you can replace one of the Pokemon on your team with an enemy and make it a leader for fun: When an enemy Pokemon becomes the leader, you control where it moves, but it'll attack on its own, and your allies will attack it (this won't be the case if you set the right values in the Pokemon's Floor Data). This also leads to a lot of bugs. Note that changing the leader through the game's team submenu doesn't change the order of the list.
+
+0201BCEC - EDA of the pokemon the game's PoV is currently focused on. Changing it to 0 does not move the PoV, but makes the UI invisible.
+
+0203B450 - EDA of the team's current leader. During your turn (while the game is waiting for you to make an action), if you change this and 03007BF8 to the EDA of another Pokemon, and if you set the Pokemon's leader boolean to true in its floor data, you will have immediate control over that Pokemon.
+
+0202D2B0 - place where every pokemon's graphics data is collected. Allies and enemies are separated? Could be used for more than just pokemon???
+A graphics data structure is 8 bytes long: the first 4 are a ROM address which points to another ROM address, which is the name of the pokemon's sprite's file (always starts with "ax" followed by the pokemon's species ID) (see 08510010). The next 4 are another ROM address, pointing to the sprite's file itself - changing this immediately changes the pokemon's sprite. Note that, if there are too many large pokemon on the screen, the sprites will glitch up. 
+
+0201B638 - 0201BCB3 - an impressive display of the efficiency of RRT's engine. This is a massive approximately 67B byte array of pointers, one for each pokemon. 0201B638+7*4 is for squirtle, for example. Each one is a pointer to the pokemon's graphics data, and is 0 if a graphics data structure doesn't exist for that pokemon. Because the game only creates graphics data for the pokemon which will appear on your current floor and in your team, this array is always completely empty, save for a dozen entries at most. lmao
+The function 080687EC creates graphics data and adds their pointers to this array.
+
+
+0201FB58 - keeps track of the time until the message box disappears: it becomes F0 when a new message appears, and decreases by 1 every frame. If you set it to 0, it'll stay up forever: you need to set it to 1, then it'll disappear when it goes to 0.
+
+0201FB5C - keeps track of the message box text scrolling: counting up from 0, scrolling ends when this is B. The game prevents the next turn from happening while the message box's text is scrolling, which is the reason why the game seems to sporadically pause for a long time.
+
+0201FB60 - scroll state: 1-3 when it's scrolling, 0 when it's not scrolling.
+
+0201F8C5 - becomes 1 for half a second when you close the menu, but not when you open it.
+
+0203B410 and 0203B412 store your coordinates on the minimap, but only if the minimap is visible
+
+0202EE04 is a pointer to something to do with the minimap graphics.
+
+0202EE34 records the amount of time you've had the menu open.
+
+0202EDD0 records what gui you have up, and is 0 if you have no gui up. 7 is for the main menu, 6 is for the menu that pops up after you've pressed nothing for a long time, A is for a menu after the main menu (moves, items, summary, etc), 2 is for when in-dungeon dialogue happens (talk to a partner, get a help message), 3 is when the text box is visible, and 9 is for when you're looking at the log.
+
+0202F22C - becomes 1 while you're holding the r button
+
+03007BCC - while the game is waiting for you to make a decision, if you don't press anything, this number counts up every frame and makes the menu pop up automatically after 707 frames. See 0805DD3E
+
+02003B06 - timer for the pause between turns of Pokemon.
+
+020020DC is the start of the effect buffer - an animation's structure is D0 bytes long, and according to the animation checker, 32(dec) can be kept here at a time, though most of the time, only the first animation slot is used. Also, not all effects use the effect buffer.
+
+02011D58 - current weather
+02011D5A - turns until weather damage happens
+02011D64 to 6A - changing one of these bytes to 1 changes the weather on the next turn
+
+02004184 - the amount of money Kecleon will buy your items for in a shop. This number starts at 0, and whenever you place an item, it increases by the item's price. When you agree to selling your items, this value is not zeroed, it's instead reduced by the total value of the items you sold (see 0807EFFC): due to this and a glitch in loading quicksave data which doubles the value (see 08082060), the infinite money exploit is possible.
+
+0200416C - goal of the outing: equal to 0 if you're going through the dungeon to progress the story, 1 if you're rescuing another player, and 2 if you're replaying a dungeon for a job / no reason. 
+
+
+02007506 - A bit array about dungeon properties. Bit 1 is 0 if the dungeon is descending and 1 if it's ascending. 
+
+0202F318 - 1 if lava walking pokemon can step on the dungeon's water/lava tiles
+0202F319 - 1 if water walking pokemon can step on the dungeon's water/lava tiles
+
+0200750C - beginning of Tile Data. Used to keep generic properties of a tile during dungeon exploration and creation, as well as what tiles are visible on the map. Dungeons are 56(dec) tiles wide and 32(dec) tiles long. Data before 0200750C stores various properties of the floor.
+To find a tile's data based on its coordinates, use this equation: 0200750C +x*18h +y*540h
+Tile Data memory map: 18 bytes
+0	Bit array: identifies the tile's type, but does not change its graphics or collision, unless it's edited at a certain point during dungeon generation (see 0804B544). 
+	bit 1 (1)	0 if wall, 1 if floor
+	bit 2 (2)	true if it's a water or lava tile - see 0202F318 and 2F319
+	bit 3 (4)	immediately dropped if set during dungeon generation
+	bit 4 (8)	true if it's a floor tile at a room exit / crossroad
+	bit 5 (10)	immediately dropped if set during dungeon generation
+	bit 6 (20)	kecleon tile
+	bit 7 (40)	monster house tile - says "it's a monster house!" and starts playing the monster house music
+	bit 8 (80)	unknown - it's not dropped during dungeon generation, so it may be important
+1	This byte is 2 if the tile is a stairway. Manually changing it to 2 immediately makes it behave like a stairway.
+2-3	Unknown
+4	This determines if the tile is on the minimap, and changing it to different numbers affects its transparency on the minimap, and sometimes affects the mapped status of adjacent tiles? It's 0 if it's unmapped, 1 if it's faded, and 3 if it's mapped - it appears to be a bit array?
+5-7	Unknown
+8	This byte affects its sprite. Remember that you need to walk until it's off-screen then walk back on screen in order for the game to redraw it after changing its value, or change the game's PoV by looking at a team member through the team menu. Strangely, if the tile is a hidden trap and you reveal it, this number doesn't change.
+9	Unknown - usually either equal to FF or 3. During dungeon creation, a tile's data is completely wiped to 0, except for this byte.
+A	A bit array which affects which way you can leave the tile - changing it does not affect how you walk ONTO it, it only determines which way you can walk OFF of it. If a bit is true, you can move in that direction, if false, you can't move in that direction - so it's FF for a tile which has no walls around it. Bit 1 determines if you can go down, bit 2 determines if you can go down-right, bit 3 determines if you can go right, etc. 
+B	Unknown
+C-F	Affects its sprite, but only sometimes?
+10-13	Stores the EDA of the Pokemon currently occupying it - 0 if none.
+14-17	Stores the EDA of the item or trap occupying it - 0 if none.
+
+Item and Trap entity data structures are the same as Pokemon entity data structures, with a few things to note:
+0-3:	The first byte determines the type of the entity data. If it's 2, it's a trap, and if it's 3, it's an item. Changing a trap into an item and stepping on it causes you to pick up "the Nothing".
+4-7:	The entity's X and Y coordinates in the dungeon.
+C-13:	If it's an item, these affect its graphical position.
+20:	This byte is equal to 1 if the trap is visible and 2 if it's hidden. Changing this to 0 for an item makes it invisible.
+70-73:	Pointer to the entity's Item Floor Data or Trap Floor Data.
+
+Trap Floor Data (4 bytes?)
+0:	Determines what trap it is.
+	1 is a mud trap
+	5 is a pitfall trap
+	C is a poison spikes trap
+	10 is a chestnut trap
+	11 is a wonder tile
+	13 is a spikes trap
+	14 is a black box with a yellow rim which, once stepped on, freezes the game for two seconds and brings up the message box with no text. Sometimes it's longer and puts a "D" in the message box if a partner steps on it.
+	15 is a black box with a red rim, which does the same thing as trap 14.
+	16 looks like a stairs tile. It says D when you step on it.
+	17 looks like a stairs tile and produces an effect and noise similar (but far from exact) to when you step on a wonder tile.
+	18 looks like a rescue flag which does nothing but freeze the game for a few seconds when you trigger it.
+	19 turns it into a Kecleon tile that brings up the message box with no text when triggered.
+	1A BUGS OUT THE GAME IN A FREAKING WILD WAY WHEN YOU STEP ON IT.
+	1B is a pitfall trap, except it makes the sound effect when you eat a giant apple.
+	1C is a steel tile with a small red X that does nothing but produce blank lines in the message box.
+	Traps 1D onward have glitched graphics and random effects.
+1:	Usually this is 0, but if the trap is a wonder tile and this isn't set to 2, the wonder tile doesn't work.
+2-3:	Unknown, likely nothing.
+
+Item Floor Data (4 bytes?)
+0:	Bit array which affects what happens when you step on the item: It's the same as the bit array found at the start of toolbox items.
+	bit 1: Exist bool. If off, when you pick the item up, it won't go into your toolbox - the game will say that you picked it up and put it in the toolbox, but when you look in the toolbox, it isn't there.
+	bit 2: When this is on and you step on the item, the game will open a dialogue asking if you want to pick it up as if it's a shop item, but the UI won't display its name unless bit 1 is true.
+	bit 3: Becomes true when you view the item's info box.
+	bit 4: Makes the item sticky (red X before its name)
+	bit 5: Makes the item selected (E graphic before the item's name) - it'll still be selected when you pick it up.
+	bit 6: unknown
+	bit 7: unknown
+	bit 8: unknown
+1:	This is the quantity of the item. For items which can't be stacked, this is equal to 0, and changing it does nothing.
+2:	This determines what item it is.
+3:	Unknown, likely nothing?
+
+
+020384E8 - ID of the pokemon the currently loaded TNL/LvUp table belongs to
+020384F0 - whenever the game wants to look at a pokemon's experience to next level + level up value table, it decompresses it and loads it to this place using the function at 0808E010. 
+Each entry in the table is C bytes long, get the current level's entry with 020384F0 +(Lv *C) (first entry is blank, table ends at level 99(dec)):
+0-3	Total amount of EXP needed to advance to the next level
+4-5	HP gained at next level up
+6-9	Atk, SpAtk, Def, SpDef
+A-B	unknown, probably unused
+
+
+
