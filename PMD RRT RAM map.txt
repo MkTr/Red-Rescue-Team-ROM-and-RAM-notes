@@ -250,7 +250,7 @@ Memory map of a move (8 bytes):
 		bit 7 (40) = Unknown
 		bit 8 (80) = Unknown
 1	Unknown, though I know it's another bit array - I just haven't looked into it. bit 1 makes it unusable. When you change bits in the first bit array, the game changes bits in this bit array sometimes?
-2-3	Move ID
+2-3	Move ID (see 083679A0)
 4	Current PP
 5	Move Plus Points
 6-7	Unknown
