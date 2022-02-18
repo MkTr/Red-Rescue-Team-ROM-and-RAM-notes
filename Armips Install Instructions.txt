@@ -5,7 +5,7 @@ Armips install instructions:
 3. Change the ROM's name to "RRT.gba" - alternatively, you can open the .asm file with a text editor and change "RRT.gba" to the name of your ROM.
 4. Select the .asm file and drag it on top of armips. A file called "RRT_P.gba" should be created, which is a copy of the original ROM with my hack applied.
 
-If RRT_P doesn't appear, an error occurred. Open a command window in the folder (hold shift, right-click, and select "Open command window here" in the context window), type the following, and hit enter:
+If RRT_P doesn't appear, an error occurred. Open a command window in the folder (hold shift, right-click an empty spot in the folder, and select "Open command window here" in the context window), type the following, and hit enter:
 armips.exe "name of my asm file.asm"
 A list of errors should appear - fix them and try again.
 
