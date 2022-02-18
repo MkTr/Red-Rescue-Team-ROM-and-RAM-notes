@@ -457,7 +457,7 @@ data
 To find the name of a move from its ID: Start with a register equal to 083679A0. Multiply the move ID by 24 and add that value to the register. Load the word from that register, then load the string that the word points to.
 Finding a move's ID based on its name is just as easy: search for the address of the move's name (making sure there's an 08 at the start before you reverse its bytes) to get the pointer, get the address of that pointer, subtract 083679A0, divide the result by 24, drop the decimals, then add 1.
 For whatever reason, all the move names aren't stored in the same place, some are stored in ridiculously weird places. For instance, Bite is stored in the list of Pokemon names, between Mightyena and Poochyena. 
-To find the move's PP, add C to the register after multiplying the move ID and adding it, and load the byte.
+To find the move's PP, add C to 083679A0, add the move ID *24, and load the byte.
 
 data 084A03BC - Boss Room Layouts Pointer Table
 084A03BC + (boss room ID * 4) is the pointer to a boss room's tile data - 0849E933 is Skarmory's room. The first two bytes of a room define its dimensions, and each byte afterwards are the tiles, compressed in a similar way a PNG is. The tens place of a byte determines what the tile is, and the ones place determines how many copies of the tile to make in a row - so the number 26 makes 6 tiles with an ID of 2. This is not the case for bytes equal to 0E: these bytes tell the game to read the next byte and make one tile of that type, as its type obviously can't fit in a single digit. So 0E 3C makes one tile of type 3C. 
