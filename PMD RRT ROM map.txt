@@ -219,11 +219,11 @@ func 08069E8C - the function that checks if a Pokemon has a weather-changing abi
 
 line 0806A22A - Nopping this operation makes the PoV cut to partners regardless of how far away they are from you if far-off pals is on.
 
-line 0806A308 - sets the amount of time the game waits for before the next pokemon moves in some circumstances, and before changing the PoV if far off pals is on
+line 0806A308 - sets the amount of time the game waits for before the next pokemon moves, and before changing the PoV if far off pals is on
 
 func 0806B168 - Creates all pokemon on a dungeon's floor?
 
-func 0806B7F8 - Creates an enemy pokemon (setting its Entity and Floor data and putting it on a tile) (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data's pointer in 0201B638 is properly assigned, or else the game will crash.
+func 0806B7F8 - Creates an enemy pokemon (Entity and Floor data and putting it on a tile) (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data's pointer in 0201B638 is properly assigned, or else the game will crash.
 parameters:
 r0: pointer to creation data
 	r0+0: pokemon ID
@@ -412,7 +412,7 @@ Jumps to different functions based on the current script command on line 0809EB1
 line 0809FC2E - personality test
 
 func 080A4B70 - Script Loader
-Finds the current script to start playing. r0 is a pointer to C bytes to load data to, and r1, r2, and r3 are script and subscript IDs. A table at 0811E258 keeps a pointer to the end of every script (organized by script ID): at a script's end is a pointer table to its subscripts, but the process of loading these is complicated - the process starts on line 080A4BAC. 
+Finds the current script to start playing. r0 is a pointer to C bytes to load data to, and r1, r2, and r3 are script and subscript IDs. A table at 0811E258 keeps a pointer to the end of every script (organized by script ID): at a script's end is a pointer table to its subscripts (or threads?), but the process of loading these is complicated - the process starts on line 080A4BAC. 
 If the code around 080A4B9E is for debugging purposes, this function's name could be GroundMap ExecuteStation?
 
 
