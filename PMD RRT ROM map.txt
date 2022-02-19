@@ -476,5 +476,5 @@ data 084A9E74 is a table of floor dungeon data addresses, sorted by dungeon ID. 
 	+C: unknown, always equal to 3
 	+E: unknown, always 0.
 
-data 08510010 - Spritesheet Filename Table
+data 08510010 - Spritesheet Filename and File Pointer Table
 Use 08510010 +(ID*8) to get a pokemon's pointers. The first pointer is the file's name, and the second is the file itself. A pokemon's graphics data (0202D2B0) has a pointer to one of these entries. The existence of pksdir0 headers before the files is more evidence that RRT is just BRT with the bare minimum changed.
