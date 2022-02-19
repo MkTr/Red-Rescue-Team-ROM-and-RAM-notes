@@ -223,7 +223,7 @@ line 0806A308 - sets the amount of time the game waits for before the next pokem
 
 func 0806B168 - Creates all pokemon on a dungeon's floor?
 
-func 0806B7F8 - Creates an enemy pokemon (Entity and Floor data and putting it on a tile) (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data's pointer in 0201B638 is properly assigned, or else the game will crash.
+func 0806B7F8 - Creates an enemy pokemon (setting its Entity and Floor data and putting it on a tile) (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data's pointer in 0201B638 is properly assigned, or else the game will crash.
 parameters:
 r0: pointer to creation data
 	r0+0: pokemon ID
