@@ -223,7 +223,7 @@ line 0806A308 - sets the amount of time the game waits for before the next pokem
 
 func 0806B168 - Creates all pokemon on a dungeon's floor?
 
-func 0806B7F8 - Creates an enemy pokemon's Floor Data (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data is properly assigned, or else the game will crash.
+func 0806B7F8 - Creates an enemy pokemon's Floor Data (calls 0806BC68). Called on line 0806B7B6 when a dungeon is being generated, line 08071D3A when it's created during floor exploration, and line 08051A10 to generate pokemon in boss rooms. 080687EC MUST be called before the pokemon is created so its graphics data's pointer in 0201B638 is properly assigned, or else the game will crash.
 parameters:
 r0: pointer to creation data
 	r0+0: pokemon ID
@@ -358,7 +358,7 @@ func 0807EFFC - Dungeon Kecleon Selling Function
 When you leave Kecleon's shop, this function checks if you left anything to sell to Kecleon, and if you have, makes Kecleon ask to buy your items. It manages the dialogue boxes and entire selling process. The game determines whether or not you have items to sell by checking if 02004184 is nonzero, and if you sell your items, 02004184 is reduced by the cost of your items. Due to this, and a glitch in loading quicksave data which doubles the value (see 08082060), the infinite money exploit is possible.
 
 func 08082060 - Checks for and updates Kecleon shop dungeon tiles? Or checks all of a dungeon's tiles?
-This function is called when you load a quicksave, on line 08081C28. I don't know a lot about it - all I know is that it cycles through tiles in the dungeon and, on line 08082092, it calls func 080460F8: this checks if there's an unsold item on a kecleon shop tile, and if there is, it add's the item's cost to 02004184 on line 08046184. 
+This function is called when you load a quicksave, on line 08081C28. I don't know a lot about it - all I know is that it cycles through tiles in the dungeon and, on line 08082092, it calls func 080460F8: this checks if there's an unsold item on a kecleon shop tile, and if there is, it adds the item's cost to 02004184 on line 08046184. 
 Because this function is run without resetting 02004184, its value is increased higher than it's supposed to be. And because of how 0807EFFC works, the infinite money exploit is possible.
 
 func 08082FE0 - when resuming a quicksave, loads a bunch of data into RAM
