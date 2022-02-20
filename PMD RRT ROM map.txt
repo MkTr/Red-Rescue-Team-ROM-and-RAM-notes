@@ -423,7 +423,7 @@ address += ID3*28h
 address = *(address+24h)
 address = *(address)
 address = *(address+8)
-If the code around 080A4B9E is for debugging purposes, this function's name could be GroundMap ExecuteStation?
+If the code around 080A4B9E is for debugging purposes (it calls 08011BC0), this function's name could be GroundMap ExecuteStation?
 
 
 
