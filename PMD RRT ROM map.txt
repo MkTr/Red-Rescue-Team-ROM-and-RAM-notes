@@ -412,7 +412,17 @@ Jumps to different functions based on the current script command on line 0809EB1
 line 0809FC2E - personality test
 
 func 080A4B70 - Script Loader
-Finds the current script to start playing. r0 is a pointer to C bytes to load data to, and r1, r2, and r3 are script and subscript IDs. A table at 0811E258 keeps a pointer to the end of every script (organized by script ID): at a script's end is a pointer table to its subscripts (or threads?), but the process of loading these is complicated - the process starts on line 080A4BAC. 
+Finds the current script to start playing. r0 is a pointer to C bytes to load data to, and r1, r2, and r3 are script and subscript IDs. A table at 0811E258 keeps a pointer to the end of every script (organized by script ID): at a script's end is a pointer table to its subscripts (or threads?). The process of loading is complicated:
+(r1 r2 and r3 are ID1 ID2 and ID3 respectively)
+address = 0811E258h +(ID1*4)
+address = *(address) //(i.e. it becomes equal to the four bytes at the address 0811E258+x)
+address = *(address+4)
+address += ID2*8
+address = *(address+4)
+address += ID3*28h
+address = *(address+24h)
+address = *(address)
+address = *(address+8)
 If the code around 080A4B9E is for debugging purposes, this function's name could be GroundMap ExecuteStation?
 
 
