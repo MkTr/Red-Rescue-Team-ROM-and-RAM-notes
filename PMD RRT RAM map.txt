@@ -253,7 +253,7 @@ Memory map of a move (8 bytes):
 2-3	Move ID (see 083679A0)
 4	Current PP
 5	Move Plus Points
-6-7	Unknown
+6-7	Unknown. Move structures in BRT are 6 bytes long, so these are probably unused?
 
 
 02017310 - beginning of Entity Data entries for pokemon. Entity Data Addresses are what the game uses to identify entities on a floor in a dungeon, and are used for pokemon, items, and traps (wonder tiles are counted as traps). For example, the data of floor tiles keep the EDA of the Pokemon currently occupying them and the EDA of the trap or item on them. Like Pokemon Floor Data, the entity data structures of your partners are found after your leader's in order of how they appear on your team, and are followed by the entity data structures of other Pokemon on the floor - there are enough slots for a total of 32(dec) pokemon. The entity data of traps and items may be somewhere nearby.
