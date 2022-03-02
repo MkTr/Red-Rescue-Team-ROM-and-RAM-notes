@@ -196,9 +196,9 @@ func 0805D8C8 - Player Turn Idling Function
 Waits for the player to make a decision and handles actions which don't use your turn (like changing direction and opening the menu).
 line 0805DD7E to 0805DD8E - checks if L and B are held, brings up the message log if they are (on line 0805DD98, jumping to func 080532B4, which doesn't return until the player closes the message log). The two functions called after may be resetting variables.
 
-line 0805DD3E - game checks if 03007BCC is greater than 707 here (this number counts up every frame since your last input), and if it is, brings up the automatically popping up team menu.
+line 0805DD3E - game checks if 03007BCC is greater than 707 here (this number counts up every frame since your last input), and if it is, brings up the menu automatically.
 
-line 0805F43A - jumps to the function which waits for player input after bringing up the Team menu
+line 0805F43A - jumps to the function which waits for player input after bringing up the Team submenu
 
 line 0805F544 - builds the tabs in the moves menu
 
@@ -487,4 +487,5 @@ data 084A9E74 is a table of floor dungeon data addresses, sorted by dungeon ID. 
 	+E: unknown, always 0.
 
 data 08510010 - Spritesheet Filename and File Pointer Table
-Use 08510010 +(ID*8) to get a pokemon's pointers. The first pointer is the file's name, and the second is the file itself. A pokemon's graphics data (0202D2B0) has a pointer to one of these entries. The existence of pksdir0 headers before the files is more evidence that RRT is just BRT with the bare minimum changed.
+Use 08510010 +(ID*8) to get a pokemon's pointers. The first pointer is the file's name (always starts with "ax" followed by the pokemon's species ID), and the second +4 is a pointer to a pointer to the sprite's file itself (without adding 4, it's an address to the SIRO header). The first pointer in a pokemon's graphics data (0202D2B0) is a pointer to a 08510010 entry, and the second graphics data pointer is to the sprite's file itself. The existence of pksdir0 headers before the files is more evidence that RRT is just BRT with the bare minimum changed.
+It's actually completely possible to remove the graphics data entries of pokemon and the graphics data array (0201B638) entirely. Just make a pokemon's graphics data pointer in its entity data +64 equal to the pokemon's 08510010 entry +4. The SIRO string will be in place of the pointer to the sprite's filename, but it doesn't affect the game at all.
