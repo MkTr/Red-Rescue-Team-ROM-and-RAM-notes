@@ -272,7 +272,7 @@ C-F		Pokemon's X position on the screen.
 20		Changing this to 0 makes the pokemon invisible, but does not make it nonexistent.
 21-63		Various variables the game uses for the Pokemon's animation.
 64-67		A pointer to the pokemon's Graphics Data. See 0202D2B0 for an explanation.
-68-69		Affects your Pokemon's sprite and palette.
+68-69		Affects your Pokemon's sprite and palette. It's really weird... I made code which changes the run away ability so it turns the pokemon into rayquaza instead, by editing its graphics data (EDA+64), but in doing this alone, all the sprites of every other pokemon bug up. Setting this number to 0 contains the bug to affect *just* the changed pokemon's sprite, there's got to be a number between this and the default which fixes the bug.
 6A		Changing 6A makes your Pokemon perform an animation: it's usually 7 (the idle animation).
 6B		Copy of 6A
 6C		6C is the direction your Pokemon is facing: 0 is looking down, 1 is looking down and right, 2 is looking right, 3 is looking right and up, et cetera. Like 6A, it also makes the pokemon do an animation if you set it to a number higher than 7, in a direction based on the first three bits of the byte. In order to make a pokemon bounce, I set 6A to 7 and added 18 to 6C.
