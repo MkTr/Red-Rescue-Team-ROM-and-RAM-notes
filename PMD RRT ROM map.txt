@@ -107,7 +107,7 @@ func 080189C8 - take/info item function. After selecting take, on line 08018A32,
 02003A6C - new max number variable
 02003A60 - new current number variable
 
-func 08011BC0 - Does nothing. Pushes three registers, immediately pops them, then returns. Surrounded by similar functions. One example of this function being called is on line 080A4BA8 (in func 080A4B70), where r1 is set to 0811756C before calling the function, which is a pointer to the string "GroundMap ExecuteStation %3d %3d %3d". Could these be debug functions???
+func 08011BC0 - Does nothing. Pushes three registers, immediately pops them, then returns. Surrounded by similar functions. One example of this function being called is on line 080A4BA8 (in func 080A4B70), where r1 is set to 0811756C before calling the function, which is a pointer to the string "GroundMap ExecuteStation %3d %3d %3d". Could these be debug functions??? Setting breakpoints for them, they're only called in functions used for the script engine.
 
 
 line 0803C8B6 - the part of the personality quiz which uses the RNG-per-frame to choose a new question, but won't choose questions which have already been asked or are in the same group of questions which were asked (see 02004904)
@@ -198,7 +198,7 @@ line 0805DD7E to 0805DD8E - checks if L and B are held, brings up the message lo
 
 line 0805DD3E - game checks if 03007BCC is greater than 707 here (this number counts up every frame since your last input), and if it is, brings up the menu automatically.
 
-line 0805F43A - jumps to the function which waits for player input after bringing up the Team submenu
+line 0805F43A - jumps to the function which waits for player input after bringing up the Team menu. It returns after the player exits the menu or selects an option in the team submenu, and records the option you chose in the leader's FDA+44.
 
 line 0805F544 - builds the tabs in the moves menu
 
