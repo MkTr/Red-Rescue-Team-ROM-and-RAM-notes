@@ -1,6 +1,7 @@
 All numbers are written in hexadecimal unless stated otherwise, with (dec) for decimal.
 All of these addresses are found in an unmodded US/Australian Red Rescue Team ROM, and will not work for other localizations.
 Don't take all of the notes at face value: there's a ton of parameter and return value data missing, even in sections where I mention a function's parameters and returns. 
+Also look through the code of PMDe for more ROM info (it might have some mistakes, see 08109D30 +B, 084A9F74, and 0202F400): https://github.com/SunakazeKun/PMDe
 
 Keywords: 
 func: function - functions are supposed to be called routines / subroutines, but I call them functions just because routines routinely function as functions.
@@ -440,9 +441,10 @@ data 08108084 - Dungeon Floor Bytes.
 This is... So goddamn bizarre. This is a pointer table to floor dungeon data, sorted by dungeon ID. Each floor is one nonzero byte - for example, 00 01 01 01 00 01 01 01 01 01 00 at 0810795C are the floors of tiny woods and thunderwave cave. They change to 02s at Mt.Thunder, 03s in the middle of Mt.Thunder's Peak, and keep going up to 0E. If you change a dungeon's size without adding floor entries here, the game will crash when the dungeon starts and ends, but the dungeon itself doesn't bug up? Why isn't this just kept with the other dungeon floor data, so it's all in one place? Adding floor entries here is one of the three things needed to expand a dungeon's size: see 084A9E74 and 081077A8.
 
 data 08109D30 - Dungeon data table
-sorted by dungeon ID, each dungeon's entry is 10 bytes. Byte B is a bit array which determines what HMs you need to enter the dungeon: 1 is for fly, 2 is for dive, 4 is for waterfall. Setting it to 0 disables HM requirement.
+sorted by dungeon ID, each dungeon's entry is 10 bytes. 
 5: maximum team members
 7: if 1, sets your team's level to 1 when you enter
+B: bit array which determines what HMs you need to enter the dungeon: 1 is for fly, 2 is for dive, 4 is for waterfall. Setting it to 0 disables HM requirement. PMDe DOES NOT SET THIS CORRECTLY - changing the entry condition options in PMDe does nothing.
 
 data 0810AD0C - version exclusive pokemon IDs, see 0203989A. Figure out how this list works and erase it.
 
@@ -452,12 +454,10 @@ Instead of simply copying and pasting a star for every IQ stage, there's an indi
 0826FCD4 - 0826FDE1 appears to be data and pointers used to verify if a save file is legitimate, and if you edit it, old save files won't work. Editing it also makes it impossible to make new save files - the game says "Save failed" whenever you try to save your game. func 080B0BE0 is used in saving the game - on line 080B0BF0, it compares something, and if it's false, the save will fail. However, this function isn't even called in a game where the save file verification data is changed...?
 
 data
-08357BFE - bulbasaur's lv1 hp
-0835846E - Nidoqueen's lv1 hp
-083584B4 - Nidoran boy's LV 1 stats
-083584B6 - Nidoran B's lv1 hp
-083584FE - Nidorino's lv1 hp
-pokemon species data structure is 48 bytes long
+08357B98 - Start of Pokemon Species Data. One entry is 48 bytes long (pokemon's PSD entry = (ID*48)+08357B98)
+0-3	pointer to pokemon's name
+1E	pokemon's lv1 HP
+20-23	pokemon's EXP Yield
 
 data
 083679C4 - pointer to the name of Iron Tail (ID 01)
@@ -477,7 +477,7 @@ Changing the player's spawn tiles to Skarmory spawn tiles (resuts in the player 
 Changing a bunch of normal tiles to Skarmory spawn tiles (All of these copies of Skarmory are completely interactable, but the room ends after you defeat one of them due to how func 08084E00 works): https://cdn.discordapp.com/attachments/400728230501285889/864016502465101824/unknown.png
 
 data 084A9E74 is a table of floor dungeon data addresses, sorted by dungeon ID. The game finds this table on line 0803D508, using the game's file directory system. Every floor in floor dungeon data is 10 bytes, and a dungeon's first floor entry is always blank (all zeroes). Adding floor entries is one of three things needed to expand a dungeon's size: see 081077A8 and 08108084.
-	floor entry +0: floor ID. Every floor in the game has a different ID: the floors in tiny woods are 0, 1, and 2, and the floors in thunderwave cave are 3, 4, 5, 6, and 7, and the next dungeon continues at 8, 9, A, B, etc. Note that special floors (floors where a cutscene plays, floors where you fight a boss) are not included in this count (so tiny woods floor 4 does not appear anywhere in the list). Changing this changes the floor's tileset, music, and floor generation. The ID is used to get other floor properties from a list starting at 084A9F74 - each entry is 1C bytes long, and the code which extracts this data starts at 0803D558.
+	floor entry +0: floor ID. Every floor in the game has a different ID: the floors in tiny woods are 0, 1, and 2, and the floors in thunderwave cave are 3, 4, 5, 6, and 7, and the next dungeon continues at 8, 9, A, B, etc. Note that special floors (floors where a cutscene plays, floors where you fight a boss) are not included in this count (so tiny woods floor 4 does not appear anywhere in the list). Changing this changes the floor's tileset, music, and floor generation. The ID is used to get other floor properties from a list starting at 084A9F74 - each entry is 1C bytes long, and the code which extracts this data starts at 0803D558 (NOTE: The first two bytes of the entries at 084A9F74 are actually two individual variables, not one halfword as PMDe says they are in the "General" generator setting).
 	+2: Pokemon spawn table ID. Spawn table addresses begin at 084C2A9C.
 	+4: trap table ID. Number is used to get an address from a table starting at 084C4ED8, each entry is 28h bytes long. The first six entries only have the number 2710 at offset 22, and the rest are much more complicated. The code which processes this data starts at 0803D594.
 	+6: item table ID. The number is used to get an address from a table starting at 084CB56C, and take halfwords starting at that address, but numbers less than 752F are treated differently. The code which processes this is at 0803D62E.
