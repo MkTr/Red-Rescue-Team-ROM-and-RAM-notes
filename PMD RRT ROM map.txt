@@ -344,7 +344,7 @@ line 08077954 - max speed limit
 lines 0807864C and 08078658 - parts of Curse's function which increase atk and def, calling the attack and defense buffing functions (08077084 & 08077160)
 
 func 08078E18 - Transform's primary function. 
-Chooses a pokemon at random from those which spawn on the current floor on line 08078E78, using 0808E9B8. On line 08078E98, the function uses func 0806AA0C to check if the pokemon to transform into is locked by version exclusivity, and rerolls if it is. 
+Chooses a pokemon at random from those which spawn on the current floor on line 08078E78, using 0808E9B8. On line 08078E98, the function uses func 0806AA0C to check if the pokemon to transform into is locked by version exclusivity, and rerolls if it is (see 0810AD0C). 
 
 line 0807A1CE - loads the damage nightmare deals from 080F4F78, applies it shortly after
 
@@ -435,7 +435,7 @@ data 080E5C18 - menu after being rescued.
 
 data 080F4F32 - turns until Burn damages you next. 
 
-data 081077A8 - Maximum sizes of dungeons, sorted by dungeon ID. Changing a dungeon's number here is one of three things needed to expand a dungeon's size: see 084A9E74 and 08108084.
+data 081077A8 - Maximum sizes of dungeons plus 1, sorted by dungeon ID. Changing a dungeon's number here is one of three things needed to expand a dungeon's size: see 084A9E74 and 08108084.
 
 data 08108084 - Dungeon Floor Bytes.
 This is... So goddamn bizarre. This is a pointer table to floor dungeon data, sorted by dungeon ID. Each floor is one nonzero byte - for example, 00 01 01 01 00 01 01 01 01 01 00 at 0810795C are the floors of tiny woods and thunderwave cave. They change to 02s at Mt.Thunder, 03s in the middle of Mt.Thunder's Peak, and keep going up to 0E. If you change a dungeon's size without adding floor entries here, the game will crash when the dungeon starts and ends, but the dungeon itself doesn't bug up? Why isn't this just kept with the other dungeon floor data, so it's all in one place? Adding floor entries here is one of the three things needed to expand a dungeon's size: see 084A9E74 and 081077A8.
@@ -443,21 +443,24 @@ This is... So goddamn bizarre. This is a pointer table to floor dungeon data, so
 data 08109D30 - Dungeon data table
 sorted by dungeon ID, each dungeon's entry is 10 bytes. 
 5: maximum team members
-7: if 1, sets your team's level to 1 when you enter
+6: if 1, sets your team's level to 1 when you enter
 B: bit array which determines what HMs you need to enter the dungeon: 1 is for fly, 2 is for dive, 4 is for waterfall. Setting it to 0 disables HM requirement. PMDe DOES NOT SET THIS CORRECTLY - changing the entry condition options in PMDe does nothing.
 
-data 0810AD0C - version exclusive pokemon IDs, see 0203989A. Figure out how this list works and erase it.
+data 0810AD0C - version exclusive pokemon IDs, see 0203989A. Clear the data between here and 0810AD38 to remove version exclucivity.
 
 data 081158A8 - LMAOOOOOOOOOOOOO THESE ARE THE IQ STARS
 Instead of simply copying and pasting a star for every IQ stage, there's an individual string of stars for each IQ stage. And the pointer table for it at 08115718 IS EVEN WORSE: LOOK AT HOW MANY DUPLICATES THERE ARE OML
 
 0826FCD4 - 0826FDE1 appears to be data and pointers used to verify if a save file is legitimate, and if you edit it, old save files won't work. Editing it also makes it impossible to make new save files - the game says "Save failed" whenever you try to save your game. func 080B0BE0 is used in saving the game - on line 080B0BF0, it compares something, and if it's false, the save will fail. However, this function isn't even called in a game where the save file verification data is changed...?
 
-data
-08357B98 - Start of Pokemon Species Data. One entry is 48 bytes long (pokemon's PSD entry = (ID*48)+08357B98)
+data 08357B98 - Start of Pokemon Species Data. One entry is 48 bytes long (pokemon's PSD entry = (ID*48)+08357B98)
 0-3	pointer to pokemon's name
-1E	pokemon's lv1 HP
-20-23	pokemon's EXP Yield
+1E	lv1 HP
+24	lv1 atk
+26	lv1 spatk
+28	lv1 def
+2A	lv1 spdef
+20-23	EXP Yield
 
 data
 083679C4 - pointer to the name of Iron Tail (ID 01)
@@ -478,12 +481,12 @@ Changing a bunch of normal tiles to Skarmory spawn tiles (All of these copies of
 
 data 084A9E74 is a table of floor dungeon data addresses, sorted by dungeon ID. The game finds this table on line 0803D508, using the game's file directory system. Every floor in floor dungeon data is 10 bytes, and a dungeon's first floor entry is always blank (all zeroes). Adding floor entries is one of three things needed to expand a dungeon's size: see 081077A8 and 08108084.
 	floor entry +0: floor ID. Every floor in the game has a different ID: the floors in tiny woods are 0, 1, and 2, and the floors in thunderwave cave are 3, 4, 5, 6, and 7, and the next dungeon continues at 8, 9, A, B, etc. Note that special floors (floors where a cutscene plays, floors where you fight a boss) are not included in this count (so tiny woods floor 4 does not appear anywhere in the list). Changing this changes the floor's tileset, music, and floor generation. The ID is used to get other floor properties from a list starting at 084A9F74 - each entry is 1C bytes long, and the code which extracts this data starts at 0803D558 (PMDe NOTE: The first two bytes of the entries at 084A9F74 are actually two individual variables, not one halfword as PMDe says they are in the "General" generator setting, and this is also the case with the Crossings setting (offset 13 and 14)).
-	+2: Pokemon spawn table ID. Spawn table addresses begin at 084C2A9C.
-	+4: trap table ID. Number is used to get an address from a table starting at 084C4ED8, each entry is 28h bytes long. The first six entries only have the number 2710 at offset 22, and the rest are much more complicated. The code which processes this data starts at 0803D594.
-	+6: item table ID. The number is used to get an address from a table starting at 084CB56C, and take halfwords starting at that address, but numbers less than 752F are treated differently. The code which processes this is at 0803D62E.
-	+8: unknown, always equal to 1
-	+A: unknown, always equal to 2
-	+C: unknown, always equal to 3
+	+2: Pokemon spawn list ID. Spawn list addresses begin at 084C2A9C.
+	+4: trap set ID. Number is used to get an address from a table starting at 084C4ED8, each entry is 28h bytes long. The first six entries only have the number 2710 at offset 22, and the rest are much more complicated. The code which processes this data starts at 0803D594.
+	+6: item set ID. The number is used to get an address from a table starting at 084CB56C, and take halfwords starting at that address, but numbers less than 752F are treated differently. The code which processes this is at 0803D62E.
+	+8: kecleon item set ID, almost always 1
+	+A: monster house item set ID, almost always 2
+	+C: item set ID for items hidden in walls, almost always 3
 	+E: unknown, always 0.
 
 data 08510010 - Spritesheet Filename and File Pointer Table

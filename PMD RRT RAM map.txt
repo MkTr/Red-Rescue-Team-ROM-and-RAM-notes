@@ -13,7 +13,7 @@ bit array: when multiple properties are stored in every bit of a byte. For examp
 
 Addresses beginning with 02 are in RAM (sometimes available during all states of the game), 03 are on the stack (only available in a single specific state of the game), and 08 or 09 are in the ROM.
 
-Also remember that computers store numbers in reverse (called little-endian format), flipping numbers by every byte: 12345678 when stored in RAM would look like 78563412. Some memory viewers have an option to view data as 16-bit or 32-bit numbers, which re-reverses numbers by every two or four bytes respectively.
+Also remember that computers store numbers in little endian format, reversing numbers by every byte: 12345678 when stored in RAM would look like 78563412. Some memory viewers have an option to view data as 16-bit or 32-bit numbers, which re-reverses numbers by every two or four bytes respectively.
 
 
 
@@ -23,6 +23,8 @@ Also remember that computers store numbers in reverse (called little-endian form
 020C0AB4 - change this byte to 0 to access the game's debug room when you continue a saved game
 
 02038C10 - team name
+
+02038C1C - rescue team points
 
 02038C08 - money
 
@@ -127,7 +129,7 @@ memory map (58 bytes):
 02007508 - Boss Room ID. 0 for non-boss floors.
 02007501 - also the boss room ID??? it's a completely different number sometimes, but it's used to identify the room in some situations. While 7508's values make sense (1 for skarmory, 2 for meanies, 8 for rayquaza), 7501's values are all over the place (1 for skarmory, 5 for meanies, 17 for rayquaza).
 
-02007509 - monster floor bool - 1 if the game is about to generate a massive room filled with enemies.
+02007509 - monster house floor bool - 1 if the game is about to generate a massive room filled with enemies.
 
 02003AF8 - Win bool: becomes 1 after you go down stairs. Set this to 1 to advance to the next floor after moving. you can also set it to 1 during the fade to black screen to immediately advance to the next floor after the graphics fade in again.
 02003AF6 - Win bool used for boss rooms, but setting it manually works outside of boss rooms too (and 02003AF8 also works in boss rooms)
@@ -145,7 +147,7 @@ memory map (58 bytes):
 02003B01 - if 1, your pokemon will gain EXP equal to the amount stored at their floor data address +1FC
 
 
-020381F8 - beginning of Pokemon Dungeon Data entries. Dungeon Data keeps track of the data of your pokemon during a dungeon, but not while you're exploring a floor.
+020381F8 - beginning of Pokemon Dungeon Data entries. Dungeon Data keeps track of the data of your pokemon during a dungeon, but not while you're exploring a floor (see Floor Data and Entity Data).
 Dungeon Data entries are not in the same order your team is in, due to how the game constructs a team (see the first byte of the storage data entry map). It's completely possible for your leader's DDE to appear after your partner's.
 Note that dungeon data structures start IMMEDIATELY after storage data structures: don't get them mixed up. They're extremely similar, but DDEs have some more information.
 Team Data memory map (64 bytes):
@@ -168,10 +170,10 @@ statistic data structure map:
 2-3	h	The Pokemon's species mechanically. After changing this, your pokemon will give off a puff of smoke on its next turn, but its appearance won't change. In the summary menu, its species, friend area, type, and "EXP to next level" will change to match the Pokemon of whatever you set it to, and the moves it learns upon leveling up change too.
 4-5	h	The Pokemon's species graphically. Changing this will change your Pokemon's palette and shadow size, but not its sprite. It also affects what it says when you talk to it, and its name if it's an enemy.
 6	b	enemy boolean: 0 for pokemon on the player's team, 1 for all other pokemon. For example, if you change the leader's team boolean to 1, your partners will start to attack you. This is also equal to 1 for pokemon which need to be rescued and kecleon: rescue pokemon are defined by the A4 byte, and kecleon are defined by byte 8.
-7	b	the leader boolean: this number is only 1 for the leader and 0 for every other pokemon. Changing a non-leader's leader boolean to 1 makes the pokemon immobile. Changing the leader's leader boolean to 0 makes it so, after you take a turn, your leader will have a second turn, under AI control. If you set a partner's leader boolean to 1 and the leader's to 0, then defeat an enemy, the game will give you full control over your partner and put your leader under AI control for the rest of the floor - however, bugs will occur. A common bug is the missing leader hardlock, where if your former leader is defeated, you will immediately lose the game whenever a new floor loads, and opening your team menu crashes the game, bricking the save file.
+7	b	the leader boolean: this number is only 1 for the leader and 0 for every other pokemon. Changing a non-leader's leader boolean to 1 makes the pokemon immobile. Changing the leader's leader boolean to 0 makes it so, after you take a turn, your leader will have a second turn, under AI control. If you set a partner's leader boolean to 1 and the leader's to 0, then defeat an enemy, the game will give you full control over your partner and put your leader under AI control for the rest of the floor - however, bugs will occur. A common bug is the missing leader hardlock, where if your former leader is defeated, you will immediately lose the game whenever a new floor loads, and opening your team menu crashes the game, bricking the save file. See 0203B450.
 8	b	the kecleon boolean: 0 by default. If this is equal to 1 for the leader, enemies will ignore you. If this is equal to 1 for a partner, the partner will become immobile, and if you talk to it, it'll speak as if it's a kecleon.
 9	b	pokemon's level
-A	b	the Dungeon Data your pokemon is using (see below). 0 for the first entry, 1 for the second entry, etc. Equal to 0 for non-team pokemon. Changing this to another pokemon's number immediately changes your pokemon's name to the other's, and if the pokemon is further down the team order list than the other, the pokemon's stats will be written to the other's dungeon data entry, but not vice versa (for example, if you have a squirtle and a pikachu, and you change pikachu to use squirtle's dungeon data, squirtle will have pikachu's stats after you go to the next floor, but this won't happen if you change squirtle to have pikachu's dungeon data).
+A	b	the Dungeon Data your pokemon is using. 0 for the first entry, 1 for the second entry, etc. Equal to 0 for non-team pokemon. Changing this to another pokemon's number immediately changes your pokemon's name to the other's, and if the pokemon is further down the team order list than the other, the pokemon's stats will be written to the other's dungeon data entry, but not vice versa (for example, if you have a squirtle and a pikachu, and you change pikachu to use squirtle's dungeon data, squirtle will have pikachu's stats after you go to the next floor, but this won't happen if you change squirtle to have pikachu's dungeon data).
 B	b	unknown
 C-D	h	pokemon's IQ: 1 star appears in the summary menu when this is equal to 0-9, 2 stars appear at A (decimal 10), 3 appear at 32 (dec 50), 4 appear at 64 (dec 100), 5 appear at 96 (dec 150), and another star is added every 50 points. IQ is replaced with "MAX" at 3DE (dec 990). When a pokemon eats a gummi, its IQ increases by A-9 if the message is "a big favourite", 8-5 is a favourite, 4-3 doesn't seem to dislike, 2-1 is a little satisfied. 
 E-F	h	current HP
