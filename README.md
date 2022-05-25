@@ -17,7 +17,7 @@ An introduction to ARM & Thumb assembly: https://github.com/Touched/asm-tutorial
 
 no$gba's debug version, which you'll use to set breakpoints for any reads to / writes from addresses so you can see the game's code: http://problemkaputt.de/gba.htm
 
-(a few notes about no$gba's debugger: it has a bug where, if you set or delete an operation breakpoint (not a read/write one) at code which is supposed to be in Thumb mode while the game is paused in ARM mode, no$ will bug up or crash eventually. GBA games are mostly in thumb, but whenever you pause RRT, it always starts in ARM mode: hold F3 for a few seconds until the code switches to Thumb mode, then set your breakpoint. It also doesn't have a way of finding variables in RAM like VBA's cheat finder can. Also its Help tab is extremely useful, check out Help -> Debugging -> Breakpoints.)
+(a few notes about no$gba's debugger: it has a bug where, if you set or delete an operation breakpoint (not a read/write one) at code which is supposed to be in Thumb mode while the game is paused in ARM mode, nocash will bug up or crash eventually. GBA games are mostly in thumb, but whenever you pause RRT, it always starts in ARM mode: hold F3 for a few seconds until the code switches to Thumb mode, then set your breakpoint. It also doesn't have a way of finding variables in RAM like VBA's cheat finder can. Also its Help tab is extremely useful, check out Help -> Debugging -> Breakpoints.)
 
 armips, which can be used to convert .asm source code files into machine code and insert it into a ROM: https://github.com/Kingcom/armips/releases
 
