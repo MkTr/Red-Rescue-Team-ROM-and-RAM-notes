@@ -1,4 +1,4 @@
-All numbers are written in hexadecimal unless stated otherwise, with (dec) for decimal. Some numbers might have the suffix "h", which only means the number is hexadecimal.
+All numbers are written in hexadecimal unless stated otherwise, with (dec) for decimal. Some numbers might have the suffix "h", which only clarifies that the number is hexadecimal.
 All of these addresses are found in an unmodded US/Australian Red Rescue Team ROM, and will not work for other localizations.
 Addresses may not work for mods which change how much heap data is allocated: use no$gba's debugger to find out how the game accesses a point of interest, and use that method in your asm hacks to make them universally compatible. Though no mods which change RRT's heap exist at the time of writing this.
 This datacrystal doc also has some other stuff, I might move this stuff there sometime:
@@ -239,6 +239,7 @@ E4		if 1, pokemon is invisible. 2, pokemon is transformed. 3, pokemon can travel
 120-137		pokemon's second, third, and fourth moves
 13C		hunger level
 148		When a sped up pokemon does an action other than moving to a tile, all the pokemon's other extra turns are cancelled, using this byte: as long as this is 1, this pokemon's turns are skipped. Also, after changing your leader through the team submenu, this becomes 1 for your former leader to skip its next turn. This byte is zeroed for all pokemon at the start of a normal speed round.
+14E	h	bit array for certain flags. bit 3 (14E=4) is true if the runaway effect played for the pokemon.
 1FC		amount of EXP the pokemon is about to get.
 
 Memory map of a move (8 bytes):

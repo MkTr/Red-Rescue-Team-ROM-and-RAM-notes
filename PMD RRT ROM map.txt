@@ -266,9 +266,12 @@ line 0806FC26 - start/part of the code which moves a new recruit's data in a dun
 func 08070774 - get pokemon's speed
 This sets a pokemon's speed status (Floor Data Address +104) based on its speed status timers (FDA+108 to 10A and 10D) and returns the pokemon's speed in r0. Parameter is r0 = pokemon's Entity Data Address.
 
-func 08071494 - A function which checks if a pokemon has run away? Called multiple times for every pokemon every turn. Changing 080714BC to mov r0,0h disables run away.
+func 08071494 - A function which checks if the pokemon has any fear effects (cowering, overwhelming stench, at-half-health run away, etc), and returns true if so.
 
-line 0807158C in func 08071540 - game jumps to 08042910 if run away's conditions are true - this function loads run away's animation. Despite checking if the pokemon has run away and if the run away conditions are true, if the pokemon doesn't have run away, or if the pokemon does and its health is above half, this function isn't even called. On line 08042912, changing "mov r1,29h" changes the run away animation and sound effect.
+func 08071518 - Fear Effect Checker + Runaway Trigger. This function uses 08071494 to check if the pokemon has any fear effects, and if it does, runs func 08071540. This function then returns 1 if the pokemon has a fear effect, usually used to influence what direction it moves in.
+
+func 08071540 - This function checks if a pokemon has run away, if its health is equal to or less than its max health /2 (decimals dropped), and if the bit array halfword at the pokemon's SDA+14E has its third bit (4) false: if all of those conditions are true, it loads the green poof animation on line 0807158C, and sets the third bit at SDA+14E to true. 
+On line 08042912, change "mov r1,29h" to change the run away animation and sound effect.
 
 func 08071824 - Ability checker: checks if the pokemon r0 points to has the ability r1 is equal to, returns 1 if it does. (Does not check the pokemon's ROM data, it checks the pokemon's FDA+5E/5F)
 
@@ -452,6 +455,9 @@ data 081158A8 - LMAOOOOOOOOOOOOO THESE ARE THE IQ STARS
 Instead of simply copying and pasting a star for every IQ stage, there's an individual string of stars for each IQ stage. And the pointer table for it at 08115718 IS EVEN WORSE: LOOK AT HOW MANY DUPLICATES THERE ARE OML
 
 0826FCD4 - 0826FDE1 appears to be data and pointers used to verify if a save file is legitimate, and if you edit it, old save files won't work. Editing it also makes it impossible to make new save files - the game says "Save failed" whenever you try to save your game. func 080B0BE0 is used in saving the game - on line 080B0BF0, it compares something, and if it's false, the save will fail. However, this function isn't even called in a game where the save file verification data is changed...?
+
+0830CC28 - Item Data entries
+Each entry is 20h bytes. C bytes into an item data structure is its category.
 
 data 08357B98 - Start of Pokemon Species Data. One entry is 48 bytes long (pokemon's PSD entry = (ID*48)+08357B98)
 0-3	pointer to pokemon's name
